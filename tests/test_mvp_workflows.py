@@ -31,6 +31,18 @@ def create_open_announcement(client, admin_headers: dict) -> dict:
     return response.json()
 
 
+def test_browser_unauthenticated_pages_redirect_to_login(client):
+    dashboard = client.get("/admin/dashboard", follow_redirects=False)
+    announcements = client.get("/announcements", follow_redirects=False)
+    api_response = client.get("/api/applications/me", follow_redirects=False)
+    assert dashboard.status_code == 303
+    assert dashboard.headers["location"] == "/login"
+    assert announcements.status_code == 303
+    assert announcements.headers["location"] == "/login"
+    assert api_response.status_code == 401
+    assert api_response.json()["detail"] == "인증 토큰이 필요합니다."
+
+
 def test_auth_and_application_flow(client):
     admin_headers, _ = register_and_login(client, "administrator")
     applicant_headers, _ = register_and_login(client)

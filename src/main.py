@@ -5,7 +5,9 @@ import os
 from uuid import uuid4
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
@@ -68,6 +70,16 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Rt Scholarship Platform", lifespan=lifespan)
+
+
+@app.exception_handler(HTTPException)
+async def handle_http_exception(request: Request, exc: HTTPException):
+    """Redirect unauthenticated browser pages while preserving API JSON errors."""
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED and not request.url.path.startswith("/api/"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return await http_exception_handler(request, exc)
+
+
 app.include_router(programs_router)
 app.include_router(announcements_router)
 app.include_router(applications_router)

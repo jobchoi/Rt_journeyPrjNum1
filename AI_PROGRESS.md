@@ -152,6 +152,12 @@ curl http://127.0.0.1:8001/docs
 - `tests/conftest.py`, `tests/test_mvp_workflows.py` 추가
 - 인증·신청·선발·지급·사후관리·CSV·증빙 핵심 흐름 pytest 정식화
 - 관리자 대시보드에 총 신청자·선발자·재정 잔액 지표 추가
+
+### 브라우저 401 UX 보완
+
+- 인증 없는 웹 뷰 요청은 `303 /login`으로 이동
+- `/api/` 인증 오류는 기존 `401` JSON 응답 유지
+- `tests/test_mvp_workflows.py`에 두 응답 정책 회귀 테스트 추가
 - 로그인·회원가입 화면 렌더링: `200`
 - 쿠키만 사용한 관리자 대시보드 접근: `200`
 - 쿠키만 사용한 신청자 공고 목록 접근: `200`
@@ -165,6 +171,7 @@ curl http://127.0.0.1:8001/docs
 - 증빙 PDF 업로드·다운로드와 파일 권한: 통과
 - pytest MVP 회귀 테스트: `3 passed`
 - Alembic upgrade/current/downgrade: 통과
+- 브라우저 401 리다이렉트·API 401 JSON 회귀 테스트: 통과
 - 신청 폼 렌더링: `200`
 - 신청서 제출 및 본인 조회: 통과
 - 중복 신청: `409`
