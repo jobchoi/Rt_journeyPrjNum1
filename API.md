@@ -44,6 +44,21 @@
 | `POST` | `/programs/{programId}/announcements` | 공고 생성 | 담당자 |
 | `PATCH` | `/announcements/{announcementId}/status` | 공고 상태 변경 | 담당자 |
 
+초기 CRUD API는 `/api` 접두사를 사용한다.
+
+| Method | Endpoint | 설명 | 권한 |
+|---|---|---|---|
+| `GET` | `/api/programs` | 장학 사업 목록 | 인증 사용자 |
+| `POST` | `/api/programs` | 장학 사업 생성 | 관리자·사업 담당자 |
+| `GET` | `/api/programs/{programId}` | 장학 사업 상세 | 인증 사용자 |
+| `PATCH` | `/api/programs/{programId}` | 장학 사업 수정 | 관리자·사업 담당자 |
+| `DELETE` | `/api/programs/{programId}` | 장학 사업 삭제 | 관리자·사업 담당자 |
+| `GET` | `/api/announcements` | 공고 목록 | 인증 사용자 |
+| `POST` | `/api/announcements` | 공고 생성 | 관리자·사업 담당자 |
+| `GET` | `/api/announcements/{announcementId}` | 공고 상세 | 인증 사용자 |
+| `PATCH` | `/api/announcements/{announcementId}` | 공고 수정 | 관리자·사업 담당자 |
+| `DELETE` | `/api/announcements/{announcementId}` | 공고 삭제 | 관리자·사업 담당자 |
+
 ## 5. 신청 및 서류
 
 | Method | Endpoint | 설명 | 권한 |

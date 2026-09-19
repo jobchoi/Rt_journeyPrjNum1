@@ -72,6 +72,10 @@ class ScholarshipProgram(Base):
     __tablename__ = "scholarship_programs"
     __table_args__ = (
         CheckConstraint(
+            "status IN ('draft', 'active', 'closed')",
+            name="ck_program_status",
+        ),
+        CheckConstraint(
             "application_start_at IS NULL OR application_end_at IS NULL "
             "OR application_start_at <= application_end_at",
             name="ck_program_application_dates",
@@ -124,6 +128,14 @@ class FundCategory(Base):
 class Announcement(Base):
     __tablename__ = "announcements"
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft', 'open', 'closed', 'reviewing', 'finished')",
+            name="ck_announcement_status",
+        ),
+        CheckConstraint(
+            "selected_count IS NULL OR selected_count >= 0",
+            name="ck_announcement_selected_count",
+        ),
         CheckConstraint(
             "application_start_at IS NULL OR application_end_at IS NULL "
             "OR application_start_at <= application_end_at",

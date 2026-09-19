@@ -6,15 +6,17 @@ from uuid import uuid4
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, text
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
-from .auth import create_access_token, decode_access_token, hash_password, verify_password
+from .auth import create_access_token, hash_password, verify_password
 from .database import SessionLocal, create_database, engine, get_db
+from .dependencies import get_current_user, require_role
 from .models import Role, User
 from .schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from .routers.announcements import router as announcements_router
+from .routers.programs import router as programs_router
 
 
 DEFAULT_ROLES = (
@@ -59,53 +61,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Rt Scholarship Platform", lifespan=lifespan)
-bearer_scheme = HTTPBearer(auto_error=False)
-
-
-def get_current_user(
-    credentials: Annotated[
-        HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
-    ],
-    db: Annotated[Session, Depends(get_db)],
-) -> User:
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="인증 토큰이 필요합니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user_id = decode_access_token(credentials.credentials)
-    user = (
-        db.scalar(
-            select(User)
-            .options(selectinload(User.roles))
-            .where(User.id == user_id)
-        )
-        if user_id
-        else None
-    )
-    if user is None or user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 인증 토큰입니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-
-def require_role(role_code: str):
-    def role_dependency(
-        current_user: Annotated[User, Depends(get_current_user)],
-    ) -> User:
-        if not any(role.code == role_code for role in current_user.roles):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="이 작업을 수행할 권한이 없습니다.",
-            )
-        return current_user
-
-    return role_dependency
+app.include_router(programs_router)
+app.include_router(announcements_router)
 
 
 @app.get("/health")
