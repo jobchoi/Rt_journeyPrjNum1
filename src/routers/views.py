@@ -20,6 +20,7 @@ from ..models import (
     ReviewAssignment,
     ReviewCriterion,
     Selection,
+    ScholarshipProgram,
     User,
 )
 

@@ -254,6 +254,13 @@ curl http://127.0.0.1:8001/docs
 - 설계: 심사 기준, 배정, 평가를 별도 테이블로 분리하고 `prayer_requests`를 참조하지 않음
 - 검증: 관리자 기준 생성·배정, reviewer 점수 저장, 점수 상한 오류, 권한 분리 통과
 
+### 2026-09-19: 관리자 대시보드 ScholarshipProgram import 누락
+
+- 증상: `/admin/dashboard` 접속 시 `NameError: ScholarshipProgram is not defined`
+- 원인: `src/routers/views.py`의 모델 import 목록에서 `ScholarshipProgram` 누락
+- 수정: 누락 모델 import 추가 및 전체 라우터 import·컴파일 점검
+- 검증: 관리자 인증 대시보드 HTML `200`, pytest `5 passed`
+
 ### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
 
 - 증상: Bearer 헤더를 보낸 관리자 API 요청이 `422`로 응답
