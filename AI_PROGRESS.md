@@ -4,10 +4,10 @@
 
 ## 현재 상태
 
-- 기준 커밋: `48fd6ef feat: initialize FastAPI authentication backend`
-- 이번 작업: 장학 사업 및 공고 API Step 1
+- 기준 커밋: `83681c8 feat: add scholarship program and announcement APIs`
+- 이번 작업: 장학 사업 및 공고 화면 Step 2
 - 현재 브랜치: `main`
-- 프론트엔드 화면과 Jinja 템플릿은 아직 구현하지 않음
+- Jinja2 + Tailwind CDN 화면 구현 완료
 
 ## 완료된 기능
 
@@ -27,6 +27,15 @@
 - `administrator`, `program_manager`의 생성·수정·삭제 권한
 - 프로그램·공고 상태값과 날짜·선발 인원 검증
 - 프로그램과 공고의 존재하는 외래 참조 확인
+
+### 서버 렌더링 화면
+
+- `GET /admin/dashboard`: 관리자·사업 담당자 전용 대시보드
+- `GET /announcements`: 인증 사용자용 공고 목록
+- 공통 Glassmorphism 레이아웃과 Inter 폰트
+- 관리자 화면의 프로그램 생성 폼과 사업 목록
+- 향후 CSV/GAS 연계를 위한 Finance Overview 예고 영역
+- 공고 상태, 선발 인원, 모집 기간 카드 표시
 
 ## 재현 가능한 검증
 
@@ -68,13 +77,17 @@ curl http://127.0.0.1:8001/docs
 - 임시 SQLite DB에서 인증 및 프로그램·공고 CRUD 흐름 통과
 - 인증 없는 프로그램 조회: `401`
 - 권한 없는 쓰기 요청: `403`
+- 관리자 대시보드 HTML 렌더링: `200`
+- 신청자 공고 목록 HTML 렌더링: `200`
+- 신청자의 관리자 대시보드 접근: `403`
 
 ## 알려진 제한
 
 - `ALLOW_ROLE_REGISTRATION=true`는 로컬 테스트용이며 운영에서 사용하지 않는다.
 - `JWT_SECRET_KEY` 기본값은 개발용 placeholder이므로 운영 환경에서 반드시 환경변수로 지정한다.
 - 현재 데이터베이스 초기화는 `Base.metadata.create_all` 기반이다. 운영 마이그레이션은 Alembic 도입이 필요하다.
-- API는 구현됐지만 관리자 대시보드와 신청자 공고 화면은 아직 없다.
+- 화면은 서버 렌더링되며, 브라우저에서 Bearer 인증을 전달할 별도 로그인 UI는 아직 없다.
+- 관리자 생성 폼은 현재 화면 구조를 제공하며 JSON API와의 브라우저 제출 연결은 다음 UI 단계에서 보완한다.
 - 실제 운영 DB, 파일 저장소, 세부 심사·신청 도메인은 아직 구현하지 않았다.
 
 ## 트러블슈팅 로그
@@ -95,7 +108,7 @@ curl http://127.0.0.1:8001/docs
 
 ## 다음 권장 작업
 
-1. Step 1 변경사항을 feature 커밋으로 기록
-2. Jinja2 템플릿 라우터와 Tailwind CDN 화면 구현
+1. 브라우저 로그인·토큰 쿠키 또는 프론트 API 클라이언트 결정
+2. 관리자 생성 폼의 API 제출 연결
 3. API 자동화 테스트 파일을 `tests/`에 정식 추가
 4. Alembic 마이그레이션 도입
