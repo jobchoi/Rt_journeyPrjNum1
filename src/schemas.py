@@ -157,3 +157,51 @@ class FinanceOverviewResponse(BaseModel):
     total_expense: int
     balance: int
     transaction_count: int
+
+
+class SelectionCreate(BaseModel):
+    application_id: str = Field(min_length=1, max_length=100)
+    status: str = Field(pattern="^(selected|rejected)$")
+    amount: int | None = Field(default=None, gt=0)
+
+
+class SelectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    application_id: str
+    applicant_id: str
+    status: str
+    amount: int | None
+    decided_by: str
+    decided_at: datetime
+
+
+class PaymentCreate(BaseModel):
+    amount: int = Field(gt=0)
+    payment_method: str = Field(min_length=1, max_length=100)
+    external_reference: str = Field(min_length=1, max_length=200)
+
+
+class PaymentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    selection_id: str
+    amount: int
+    status: str
+    payment_method: str
+    external_reference: str
+    paid_at: datetime
+    finance_transaction_id: str
+
+
+class DocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    document_type: str
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime

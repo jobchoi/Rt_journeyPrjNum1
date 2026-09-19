@@ -72,6 +72,15 @@ class User(Base):
     finance_transactions: Mapped[list["FinanceTransaction"]] = relationship(
         back_populates="created_by_user", foreign_keys="FinanceTransaction.created_by"
     )
+    selections: Mapped[list["Selection"]] = relationship(
+        back_populates="applicant", foreign_keys="Selection.applicant_id"
+    )
+    application_documents: Mapped[list["ApplicationDocument"]] = relationship(
+        back_populates="applicant", foreign_keys="ApplicationDocument.applicant_id"
+    )
+    followup_documents: Mapped[list["FollowupDocument"]] = relationship(
+        back_populates="applicant", foreign_keys="FollowupDocument.applicant_id"
+    )
     review_assignments: Mapped[list["ReviewAssignment"]] = relationship(
         back_populates="reviewer", foreign_keys="ReviewAssignment.reviewer_id"
     )
@@ -237,6 +246,9 @@ class Application(Base):
     )
     announcement: Mapped[Announcement] = relationship(back_populates="applications")
     followups: Mapped[list["Followup"]] = relationship(back_populates="application")
+    documents: Mapped[list["ApplicationDocument"]] = relationship(
+        back_populates="application", cascade="all, delete-orphan"
+    )
 
 
 class PrayerRequest(Base):
@@ -397,6 +409,9 @@ class Followup(Base):
     applicant: Mapped[User] = relationship(
         back_populates="followups", foreign_keys=[applicant_id]
     )
+    documents: Mapped[list["FollowupDocument"]] = relationship(
+        back_populates="followup", cascade="all, delete-orphan"
+    )
 
 
 class FinanceTransaction(Base):
@@ -422,4 +437,109 @@ class FinanceTransaction(Base):
     )
     created_by_user: Mapped[User] = relationship(
         back_populates="finance_transactions", foreign_keys=[created_by]
+    )
+
+
+class Selection(Base):
+    __tablename__ = "selections"
+    __table_args__ = (
+        UniqueConstraint("application_id", name="uq_selection_application"),
+        CheckConstraint("status IN ('selected', 'rejected')", name="ck_selection_status"),
+        CheckConstraint("amount IS NULL OR amount > 0", name="ck_selection_amount"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    application_id: Mapped[str] = mapped_column(
+        String, ForeignKey("applications.id", ondelete="RESTRICT"), nullable=False
+    )
+    applicant_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    amount: Mapped[int | None] = mapped_column(Integer)
+    decided_by: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    application: Mapped[Application] = relationship()
+    applicant: Mapped[User] = relationship(
+        back_populates="selections", foreign_keys=[applicant_id]
+    )
+    payments: Mapped[list["Payment"]] = relationship(
+        back_populates="selection", cascade="all, delete-orphan"
+    )
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+    __table_args__ = (
+        UniqueConstraint("external_reference", name="uq_payment_external_reference"),
+        CheckConstraint("amount > 0", name="ck_payment_amount"),
+        CheckConstraint("status IN ('planned', 'paid', 'failed')", name="ck_payment_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    selection_id: Mapped[str] = mapped_column(
+        String, ForeignKey("selections.id", ondelete="RESTRICT"), nullable=False
+    )
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="paid", server_default="paid", nullable=False)
+    payment_method: Mapped[str] = mapped_column(String, nullable=False)
+    external_reference: Mapped[str] = mapped_column(String, nullable=False)
+    paid_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    finance_transaction_id: Mapped[str] = mapped_column(
+        String, ForeignKey("finance_transactions.id", ondelete="RESTRICT"), nullable=False
+    )
+    selection: Mapped[Selection] = relationship(back_populates="payments")
+
+
+class ApplicationDocument(Base):
+    __tablename__ = "application_documents"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    application_id: Mapped[str] = mapped_column(
+        String, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+    )
+    applicant_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    document_type: Mapped[str] = mapped_column(String, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String, nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    content_type: Mapped[str] = mapped_column(String, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    application: Mapped[Application] = relationship(back_populates="documents")
+    applicant: Mapped[User] = relationship(
+        back_populates="application_documents", foreign_keys=[applicant_id]
+    )
+
+
+class FollowupDocument(Base):
+    __tablename__ = "followup_documents"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    followup_id: Mapped[str] = mapped_column(
+        String, ForeignKey("followups.id", ondelete="CASCADE"), nullable=False
+    )
+    applicant_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    document_type: Mapped[str] = mapped_column(String, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String, nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    content_type: Mapped[str] = mapped_column(String, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    followup: Mapped[Followup] = relationship(back_populates="documents")
+    applicant: Mapped[User] = relationship(
+        back_populates="followup_documents", foreign_keys=[applicant_id]
     )

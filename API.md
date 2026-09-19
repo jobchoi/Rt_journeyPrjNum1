@@ -70,6 +70,13 @@
 | `GET` | `/api/followups/me` | 내 사후보고 조회 | 신청자 |
 | `POST` | `/api/finance/transactions/import` | 통합기금 CSV 거래내역 반영 | 관리자·사업 담당자·지급 담당자 |
 | `GET` | `/api/finance/overview` | 입금·지출·잔액 요약 | 관리자·사업 담당자·지급 담당자 |
+| `POST` | `/api/selections` | 최종 선발 또는 미선발 결정 | 관리자·사업 담당자 |
+| `GET` | `/api/selections` | 선발 결과 목록 | 관리자·사업 담당자 |
+| `POST` | `/api/selections/{selectionId}/payments` | 장학금 지급 기록 | 관리자·사업 담당자·지급 담당자 |
+| `POST` | `/api/applications/{applicationId}/documents` | 신청 증빙 업로드 | 신청자 본인 |
+| `POST` | `/api/followups/{followupId}/documents` | 사후보고 증빙 업로드 | 신청자 본인 |
+| `GET` | `/api/documents/application/{documentId}` | 신청 증빙 다운로드 | 본인·관리자·사업 담당자 |
+| `GET` | `/api/documents/followup/{documentId}` | 사후보고 증빙 다운로드 | 본인·관리자·사업 담당자 |
 
 ## 5. 신청 및 서류
 

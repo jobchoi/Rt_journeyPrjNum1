@@ -167,6 +167,60 @@ CREATE TABLE finance_transactions (
     FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT
 );
 
+CREATE TABLE selections (
+    id TEXT PRIMARY KEY,
+    application_id TEXT NOT NULL UNIQUE,
+    applicant_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('selected', 'rejected')),
+    amount INTEGER CHECK (amount IS NULL OR amount > 0),
+    decided_by TEXT NOT NULL,
+    decided_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications (id) ON DELETE RESTRICT,
+    FOREIGN KEY (applicant_id) REFERENCES users (id) ON DELETE RESTRICT,
+    FOREIGN KEY (decided_by) REFERENCES users (id) ON DELETE RESTRICT
+);
+
+CREATE TABLE payments (
+    id TEXT PRIMARY KEY,
+    selection_id TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    status TEXT NOT NULL DEFAULT 'paid' CHECK (status IN ('planned', 'paid', 'failed')),
+    payment_method TEXT NOT NULL,
+    external_reference TEXT NOT NULL UNIQUE,
+    paid_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finance_transaction_id TEXT NOT NULL,
+    FOREIGN KEY (selection_id) REFERENCES selections (id) ON DELETE RESTRICT,
+    FOREIGN KEY (finance_transaction_id) REFERENCES finance_transactions (id) ON DELETE RESTRICT
+);
+
+CREATE TABLE application_documents (
+    id TEXT PRIMARY KEY,
+    application_id TEXT NOT NULL,
+    applicant_id TEXT NOT NULL,
+    document_type TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
+    stored_filename TEXT NOT NULL UNIQUE,
+    content_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications (id) ON DELETE CASCADE,
+    FOREIGN KEY (applicant_id) REFERENCES users (id) ON DELETE RESTRICT
+);
+
+CREATE TABLE followup_documents (
+    id TEXT PRIMARY KEY,
+    followup_id TEXT NOT NULL,
+    applicant_id TEXT NOT NULL,
+    document_type TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
+    stored_filename TEXT NOT NULL UNIQUE,
+    content_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (followup_id) REFERENCES followups (id) ON DELETE CASCADE,
+    FOREIGN KEY (applicant_id) REFERENCES users (id) ON DELETE RESTRICT
+);
+
 -- Prayer requests are pastoral-care data only. There is intentionally no review
 -- or score foreign key in this table.
 CREATE TABLE prayer_requests (
@@ -206,6 +260,10 @@ CREATE INDEX idx_reviews_assignment_id ON reviews (assignment_id);
 CREATE INDEX idx_followups_applicant_id ON followups (applicant_id);
 CREATE INDEX idx_followups_application_id ON followups (application_id);
 CREATE INDEX idx_finance_transactions_type ON finance_transactions (transaction_type);
+CREATE INDEX idx_selections_applicant_id ON selections (applicant_id);
+CREATE INDEX idx_payments_selection_id ON payments (selection_id);
+CREATE INDEX idx_application_documents_application_id ON application_documents (application_id);
+CREATE INDEX idx_followup_documents_followup_id ON followup_documents (followup_id);
 CREATE INDEX idx_prayer_requests_user_id ON prayer_requests (user_id);
 CREATE INDEX idx_prayer_access_logs_request_id
     ON prayer_request_access_logs (prayer_request_id);
