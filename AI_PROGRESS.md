@@ -4,10 +4,10 @@
 
 ## 현재 상태
 
-- 기준 커밋: `83681c8 feat: add scholarship program and announcement APIs`
-- 이번 작업: 장학 사업 및 공고 화면 Step 2
-- 현재 브랜치: `main`
-- Jinja2 + Tailwind CDN 화면 구현 완료
+- 기준 커밋: `e5d2d4d feat: add scholarship management views`
+- 이번 작업: 브라우저 로그인 및 쿠키 인증 Step 3
+- 현재 브랜치: `feature/browser-auth`
+- Jinja2 + Tailwind CDN 화면과 브라우저 인증 구현 완료
 
 ## 완료된 기능
 
@@ -36,6 +36,15 @@
 - 관리자 화면의 프로그램 생성 폼과 사업 목록
 - 향후 CSV/GAS 연계를 위한 Finance Overview 예고 영역
 - 공고 상태, 선발 인원, 모집 기간 카드 표시
+
+### 브라우저 인증 Step 3
+
+- `GET /login`, `GET /register` 화면
+- 로그인 화면의 `fetch('/auth/login')` 호출
+- 로그인 성공 시 `access_token` 쿠키 저장
+- 로그인 응답 역할에 따른 관리자·신청자 리다이렉트
+- `get_current_user`가 Authorization Bearer와 `access_token` 쿠키를 모두 지원
+- 일반 회원가입은 신청자 역할로 생성
 
 ## 재현 가능한 검증
 
@@ -80,13 +89,17 @@ curl http://127.0.0.1:8001/docs
 - 관리자 대시보드 HTML 렌더링: `200`
 - 신청자 공고 목록 HTML 렌더링: `200`
 - 신청자의 관리자 대시보드 접근: `403`
+- 로그인·회원가입 화면 렌더링: `200`
+- 쿠키만 사용한 관리자 대시보드 접근: `200`
+- 쿠키만 사용한 신청자 공고 목록 접근: `200`
 
 ## 알려진 제한
 
 - `ALLOW_ROLE_REGISTRATION=true`는 로컬 테스트용이며 운영에서 사용하지 않는다.
 - `JWT_SECRET_KEY` 기본값은 개발용 placeholder이므로 운영 환경에서 반드시 환경변수로 지정한다.
 - 현재 데이터베이스 초기화는 `Base.metadata.create_all` 기반이다. 운영 마이그레이션은 Alembic 도입이 필요하다.
-- 화면은 서버 렌더링되며, 브라우저에서 Bearer 인증을 전달할 별도 로그인 UI는 아직 없다.
+- 로그인 화면은 JavaScript로 쿠키를 설정하며, 현재 HttpOnly 쿠키 발급 방식은 아직 도입하지 않았다.
+- 운영 전에는 HTTPS, `Secure`, `HttpOnly`, CSRF 방어를 포함한 쿠키 정책 검토가 필요하다.
 - 관리자 생성 폼은 현재 화면 구조를 제공하며 JSON API와의 브라우저 제출 연결은 다음 UI 단계에서 보완한다.
 - 실제 운영 DB, 파일 저장소, 세부 심사·신청 도메인은 아직 구현하지 않았다.
 
@@ -106,9 +119,16 @@ curl http://127.0.0.1:8001/docs
 - 해결: `with TestClient(app) as client:` 형태로 사용
 - 검증: 인증·역할·CRUD 통합 흐름 통과
 
+### 2026-09-19: 브라우저 쿠키 인증 추가
+
+- 증상: 브라우저에서 화면 URL을 직접 열면 Authorization 헤더가 없어 `401 Unauthorized`
+- 원인: 기존 인증 Dependency가 Bearer 헤더만 확인
+- 수정: `src/dependencies.py`에서 `access_token` 쿠키를 fallback으로 확인하고, 로그인 UI에서 성공 토큰을 쿠키에 저장
+- 검증: 로그인 응답 역할 확인, 쿠키만으로 관리자 대시보드·공고 목록 접근, 신청자의 대시보드 `403`
+
 ## 다음 권장 작업
 
-1. 브라우저 로그인·토큰 쿠키 또는 프론트 API 클라이언트 결정
+1. 운영용 HttpOnly/Secure 쿠키와 CSRF 방어 결정
 2. 관리자 생성 폼의 API 제출 연결
 3. API 자동화 테스트 파일을 `tests/`에 정식 추가
 4. Alembic 마이그레이션 도입

@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from .auth import create_access_token, hash_password, verify_password
 from .database import SessionLocal, create_database, engine, get_db
@@ -117,7 +117,9 @@ def login(
     request: LoginRequest,
     db: Annotated[Session, Depends(get_db)],
 ) -> TokenResponse:
-    user = db.scalar(select(User).where(User.email == request.email))
+    user = db.scalar(
+        select(User).options(selectinload(User.roles)).where(User.email == request.email)
+    )
     if user is None or not verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,7 +127,10 @@ def login(
         )
     if user.status != "active":
         raise HTTPException(status_code=403, detail="비활성화된 사용자입니다.")
-    return TokenResponse(access_token=create_access_token(user.id))
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        roles=[role.code for role in user.roles],
+    )
 
 
 @app.get("/roles", response_model=list[RoleResponse])

@@ -46,3 +46,4 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    roles: list[str] = Field(default_factory=list)

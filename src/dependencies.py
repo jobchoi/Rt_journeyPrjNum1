@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -16,19 +16,21 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    db: Annotated[Session, Depends(get_db)],
     credentials: Annotated[
         HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
     ],
-    db: Annotated[Session, Depends(get_db)],
+    access_token: Annotated[str | None, Cookie()],
 ) -> User:
-    if credentials is None:
+    token = credentials.credentials if credentials else access_token
+    if token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="인증 토큰이 필요합니다.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id = decode_access_token(credentials.credentials)
+    user_id = decode_access_token(token)
     user = (
         db.scalar(
             select(User)

@@ -20,6 +20,16 @@ AuthenticatedUser = Annotated[User, Depends(get_current_user)]
 Manager = Annotated[User, Depends(require_roles("administrator", "program_manager"))]
 
 
+@router.get("/login", name="login_page")
+def login_page(request: Request):
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request})
+
+
+@router.get("/register", name="register_page")
+def register_page(request: Request):
+    return templates.TemplateResponse(request=request, name="register.html", context={"request": request})
+
+
 def base_context(user: User) -> dict[str, object]:
     role_codes = {role.code for role in user.roles}
     return {"user": user, "is_admin": bool(role_codes & {"administrator", "program_manager"})}
