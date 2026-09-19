@@ -5,9 +5,9 @@
 ## 현재 상태
 
 - 기준 커밋: `e5d2d4d feat: add scholarship management views`
-- 이번 작업: 브라우저 로그인 및 쿠키 인증 Step 3
-- 현재 브랜치: `feature/browser-auth`
-- Jinja2 + Tailwind CDN 화면과 브라우저 인증 구현 완료
+- 이번 작업: 장학금 신청 접수 Step 4
+- 현재 브랜치: `feature/application-form`
+- 신청 API와 Jinja2 신청 폼 구현 완료
 
 ## 완료된 기능
 
@@ -45,6 +45,26 @@
 - 로그인 응답 역할에 따른 관리자·신청자 리다이렉트
 - `get_current_user`가 Authorization Bearer와 `access_token` 쿠키를 모두 지원
 - 일반 회원가입은 신청자 역할로 생성
+
+### 장학금 신청 Step 4
+
+- `applications` 모델: 신청자, 공고, 상태, 학업 계획, 경제적 필요, 사역 계획
+- 신청자·공고 조합 유니크 제약으로 중복 신청 방지
+- `POST /api/applications`: `applicant` 역할 전용 제출
+- `GET /api/applications/me`: 본인 신청 내역 조회
+- `GET /applications/new?announcement_id=...`: 신청 폼
+- 모집 중 공고 카드의 `신청하기` 버튼 연결
+- 신청 성공 후 공고 목록으로 이동
+
+### 장학금 신청 Step 4
+
+- `applications` 모델: 신청자, 공고, 상태, 학업 계획, 경제적 필요, 사역 계획
+- 신청자·공고 조합 유니크 제약으로 중복 신청 방지
+- `POST /api/applications`: `applicant` 역할 전용 제출
+- `GET /api/applications/me`: 본인 신청 내역 조회
+- `GET /applications/new?announcement_id=...`: 신청 폼
+- 모집 중 공고 카드의 `신청하기` 버튼 연결
+- 신청 성공 후 공고 목록으로 이동
 
 ## 재현 가능한 검증
 
@@ -92,6 +112,14 @@ curl http://127.0.0.1:8001/docs
 - 로그인·회원가입 화면 렌더링: `200`
 - 쿠키만 사용한 관리자 대시보드 접근: `200`
 - 쿠키만 사용한 신청자 공고 목록 접근: `200`
+- 신청 폼 렌더링: `200`
+- 신청서 제출 및 본인 조회: 통과
+- 중복 신청: `409`
+- 신청자의 관리자 대시보드 접근: `403`
+- 신청 폼 렌더링: `200`
+- 신청서 제출 및 본인 조회: 통과
+- 중복 신청: `409`
+- 신청자의 관리자 대시보드 접근: `403`
 
 ## 알려진 제한
 
@@ -125,6 +153,20 @@ curl http://127.0.0.1:8001/docs
 - 원인: 기존 인증 Dependency가 Bearer 헤더만 확인
 - 수정: `src/dependencies.py`에서 `access_token` 쿠키를 fallback으로 확인하고, 로그인 UI에서 성공 토큰을 쿠키에 저장
 - 검증: 로그인 응답 역할 확인, 쿠키만으로 관리자 대시보드·공고 목록 접근, 신청자의 대시보드 `403`
+
+### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
+
+- 증상: Bearer 헤더를 보낸 관리자 API 요청이 `422`로 응답
+- 원인: `access_token` Cookie 의존성이 선택값이 아닌 필수값으로 선언됨
+- 수정: Cookie 인자의 기본값을 `None`으로 설정
+- 검증: 관리자 공고 생성과 applicant 신청 제출 흐름 재통과
+
+### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
+
+- 증상: Bearer 헤더를 보낸 관리자 API 요청이 `422`로 응답
+- 원인: `access_token` Cookie 의존성이 선택값이 아닌 필수값으로 선언됨
+- 수정: Cookie 인자의 기본값을 `None`으로 설정
+- 검증: 관리자 공고 생성과 applicant 신청 제출 흐름 재통과
 
 ## 다음 권장 작업
 

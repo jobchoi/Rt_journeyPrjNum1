@@ -58,6 +58,8 @@
 | `GET` | `/api/announcements/{announcementId}` | 공고 상세 | 인증 사용자 |
 | `PATCH` | `/api/announcements/{announcementId}` | 공고 수정 | 관리자·사업 담당자 |
 | `DELETE` | `/api/announcements/{announcementId}` | 공고 삭제 | 관리자·사업 담당자 |
+| `POST` | `/api/applications` | 장학금 신청서 제출 | 신청자 |
+| `GET` | `/api/applications/me` | 내 신청서 목록 | 신청자 |
 
 ## 5. 신청 및 서류
 

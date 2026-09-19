@@ -3,14 +3,14 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import get_current_user, require_roles
-from ..models import Announcement, ScholarshipProgram, User
+from ..models import Announcement, Application, ScholarshipProgram, User
 
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
@@ -75,3 +75,28 @@ def announcements_list(
     context = base_context(user)
     context.update({"request": request, "announcements": announcements})
     return templates.TemplateResponse(request=request, name="announcements_list.html", context=context)
+
+
+@router.get("/applications/new", name="application_form")
+def application_form(
+    request: Request,
+    announcement_id: str,
+    user: Annotated[User, Depends(require_roles("applicant"))],
+    db: Annotated[Session, Depends(get_db)],
+):
+    announcement = db.get(Announcement, announcement_id)
+    if announcement is None:
+        raise HTTPException(status_code=404, detail="장학 공고를 찾을 수 없습니다.")
+    if announcement.status != "open":
+        raise HTTPException(status_code=400, detail="현재 신청할 수 없는 공고입니다.")
+    existing = db.scalar(
+        select(Application).where(
+            Application.applicant_id == user.id,
+            Application.announcement_id == announcement_id,
+        )
+    )
+    context = base_context(user)
+    context.update(
+        {"request": request, "announcement": announcement, "existing_application": existing}
+    )
+    return templates.TemplateResponse(request=request, name="application_form.html", context=context)

@@ -16,6 +16,7 @@ from .dependencies import get_current_user, require_role
 from .models import Role, User
 from .schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from .routers.announcements import router as announcements_router
+from .routers.applications import router as applications_router
 from .routers.programs import router as programs_router
 from .routers.views import router as views_router
 
@@ -64,6 +65,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Rt Scholarship Platform", lifespan=lifespan)
 app.include_router(programs_router)
 app.include_router(announcements_router)
+app.include_router(applications_router)
 app.include_router(views_router)
 
 

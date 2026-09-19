@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}장학금 신청 · Rt{% endblock %}
+{% block content %}
+<section class="mx-auto max-w-4xl pb-8 pt-10 lg:pt-16">
+  <a href="/announcements" class="text-sm font-semibold text-blue-600 hover:text-blue-800">← 공고 목록으로</a>
+  <div class="mt-8 grid gap-6 lg:grid-cols-[.75fr_1.25fr]">
+    <aside class="rounded-3xl bg-ink p-8 text-white shadow-lift lg:p-10">
+      <p class="eyebrow text-[10px] font-semibold uppercase text-blue-200">Application / {{ announcement.status }}</p>
+      <h1 class="mt-8 text-3xl font-semibold tracking-[-0.04em]">{{ announcement.title }}</h1>
+      <p class="mt-5 text-sm leading-6 text-slate-300">{{ announcement.target_description or '당신의 학업과 사역을 위한 장학 신청서입니다.' }}</p>
+      <div class="mt-10 border-t border-white/10 pt-5 text-xs text-slate-400">선발 인원 {{ announcement.selected_count or '미정' }}명</div>
+    </aside>
+    <div class="glass rounded-3xl border border-white/80 p-7 shadow-soft sm:p-10">
+      <p class="eyebrow text-[10px] font-semibold uppercase text-blue-600">Your application</p>
+      <h2 class="mt-3 text-2xl font-semibold tracking-tight">지원 정보를 들려주세요.</h2>
+      <p class="mt-3 text-sm leading-6 text-slate-500">학업과 경제 상황, 사역 계획을 솔직하고 구체적으로 작성해 주세요.</p>
+      {% if existing_application %}<div class="mt-6 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-800">이미 이 공고에 신청서를 제출했습니다. 현재 상태: {{ existing_application.status }}</div>{% endif %}
+      <form id="application-form" class="mt-8 space-y-6">
+        <input type="hidden" name="announcement_id" value="{{ announcement.id }}" />
+        <label class="block text-sm font-medium text-slate-700">학업 계획 <span class="text-blue-600">*</span><textarea name="study_plan" rows="5" required placeholder="현재 학업과 앞으로의 계획을 적어주세요." class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3.5 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea></label>
+        <label class="block text-sm font-medium text-slate-700">경제적 필요 <span class="text-blue-600">*</span><textarea name="financial_need" rows="5" required placeholder="장학금이 필요한 상황을 적어주세요." class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3.5 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea></label>
+        <label class="block text-sm font-medium text-slate-700">사역 계획 <span class="text-slate-400">선택</span><textarea name="ministry_plan" rows="4" placeholder="공동체와 사역 안에서의 계획을 적어주세요." class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3.5 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea></label>
+        <p id="form-message" class="hidden rounded-2xl px-4 py-3 text-sm"></p>
+        <button type="submit" {% if existing_application %}disabled{% endif %} class="w-full rounded-2xl bg-ink px-5 py-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md disabled:cursor-not-allowed disabled:bg-slate-300">{% if existing_application %}신청서 제출 완료{% else %}신청서 제출하기{% endif %}</button>
+      </form>
+    </div>
+  </div>
+</section>
+<script>
+  const form = document.getElementById('application-form');
+  const message = document.getElementById('form-message');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector('button');
+    button.disabled = true;
+    message.className = 'hidden rounded-2xl px-4 py-3 text-sm';
+    const data = Object.fromEntries(new FormData(form));
+    try {
+      const response = await fetch('/api/applications', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail || '신청서 제출에 실패했습니다.');
+      message.textContent = '신청서가 제출되었습니다. 신청 내역으로 이동합니다.';
+      message.className = 'rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
+      setTimeout(() => { window.location.href = '/announcements'; }, 700);
+    } catch (error) {
+      message.textContent = error.message;
+      message.className = 'rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700';
+      button.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

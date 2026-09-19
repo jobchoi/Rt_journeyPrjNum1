@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Table, Column
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Table, Column, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -62,6 +62,9 @@ class User(Base):
     )
     announcements_created: Mapped[list["Announcement"]] = relationship(
         back_populates="creator", foreign_keys="Announcement.created_by"
+    )
+    applications: Mapped[list["Application"]] = relationship(
+        back_populates="applicant", foreign_keys="Application.applicant_id"
     )
     prayer_requests: Mapped[list["PrayerRequest"]] = relationship(
         back_populates="user", foreign_keys="PrayerRequest.user_id"
@@ -179,6 +182,48 @@ class Announcement(Base):
     creator: Mapped[User] = relationship(
         back_populates="announcements_created", foreign_keys=[created_by]
     )
+    applications: Mapped[list["Application"]] = relationship(back_populates="announcement")
+
+
+class Application(Base):
+    __tablename__ = "applications"
+    __table_args__ = (
+        UniqueConstraint("applicant_id", "announcement_id", name="uq_application_applicant_announcement"),
+        CheckConstraint(
+            "status IN ('draft', 'submitted', 'under_review', 'selected', 'rejected', 'withdrawn')",
+            name="ck_application_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    announcement_id: Mapped[str] = mapped_column(
+        String, ForeignKey("announcements.id", ondelete="RESTRICT"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String, default="submitted", server_default="submitted", nullable=False
+    )
+    study_plan: Mapped[str] = mapped_column(String, nullable=False)
+    financial_need: Mapped[str] = mapped_column(String, nullable=False)
+    ministry_plan: Mapped[str | None] = mapped_column(String)
+    submitted_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        nullable=False,
+    )
+    applicant: Mapped[User] = relationship(
+        back_populates="applications", foreign_keys=[applicant_id]
+    )
+    announcement: Mapped[Announcement] = relationship(back_populates="applications")
 
 
 class PrayerRequest(Base):

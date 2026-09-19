@@ -85,6 +85,23 @@ CREATE TABLE announcements (
     FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT
 );
 
+CREATE TABLE applications (
+    id TEXT PRIMARY KEY,
+    applicant_id TEXT NOT NULL,
+    announcement_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'submitted'
+        CHECK (status IN ('draft', 'submitted', 'under_review', 'selected', 'rejected', 'withdrawn')),
+    study_plan TEXT NOT NULL,
+    financial_need TEXT NOT NULL,
+    ministry_plan TEXT,
+    submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (applicant_id, announcement_id),
+    FOREIGN KEY (applicant_id) REFERENCES users (id) ON DELETE RESTRICT,
+    FOREIGN KEY (announcement_id) REFERENCES announcements (id) ON DELETE RESTRICT
+);
+
 -- Prayer requests are pastoral-care data only. There is intentionally no review
 -- or score foreign key in this table.
 CREATE TABLE prayer_requests (
@@ -116,6 +133,8 @@ CREATE INDEX idx_user_roles_role_id ON user_roles (role_id);
 CREATE INDEX idx_programs_status ON scholarship_programs (status);
 CREATE INDEX idx_announcements_program_id ON announcements (program_id);
 CREATE INDEX idx_announcements_status ON announcements (status);
+CREATE INDEX idx_applications_applicant_id ON applications (applicant_id);
+CREATE INDEX idx_applications_announcement_id ON applications (announcement_id);
 CREATE INDEX idx_prayer_requests_user_id ON prayer_requests (user_id);
 CREATE INDEX idx_prayer_access_logs_request_id
     ON prayer_request_access_logs (prayer_request_id);

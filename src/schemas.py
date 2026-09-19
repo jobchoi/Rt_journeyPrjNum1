@@ -1,5 +1,7 @@
 """Pydantic request and response schemas for authentication."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -47,3 +49,25 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     roles: list[str] = Field(default_factory=list)
+
+
+class ApplicationCreate(BaseModel):
+    announcement_id: str = Field(min_length=1, max_length=100)
+    study_plan: str = Field(min_length=1, max_length=10000)
+    financial_need: str = Field(min_length=1, max_length=10000)
+    ministry_plan: str | None = Field(default=None, max_length=10000)
+
+
+class ApplicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    applicant_id: str
+    announcement_id: str
+    status: str
+    study_plan: str
+    financial_need: str
+    ministry_plan: str | None
+    submitted_at: datetime
+    created_at: datetime
+    updated_at: datetime

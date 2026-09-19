@@ -20,7 +20,7 @@ def get_current_user(
     credentials: Annotated[
         HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
     ],
-    access_token: Annotated[str | None, Cookie()],
+    access_token: Annotated[str | None, Cookie()] = None,
 ) -> User:
     token = credentials.credentials if credentials else access_token
     if token is None:

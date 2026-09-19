@@ -25,6 +25,7 @@ def main() -> None:
         "user_roles",
         "scholarship_programs",
         "announcements",
+        "applications",
         "fund_categories",
         "prayer_requests",
         "prayer_request_access_logs",
@@ -65,6 +66,16 @@ def main() -> None:
     connection.execute(
         "INSERT INTO prayer_requests (id, user_id, content) VALUES (?, ?, ?)",
         ("prayer-1", "user-1", "중보기도 제목"),
+    )
+    connection.execute(
+        "INSERT INTO announcements (id, program_id, title, status, created_by) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("announcement-1", "program-1", "2026 모집 공고", "open", "user-1"),
+    )
+    connection.execute(
+        "INSERT INTO applications (id, applicant_id, announcement_id, study_plan, financial_need) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("application-1", "user-1", "announcement-1", "학업 계획", "경제적 필요"),
     )
 
     print("Initial schema validation passed.")
