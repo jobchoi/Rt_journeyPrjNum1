@@ -10,7 +10,18 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import get_current_user, require_roles
-from ..models import Announcement, Application, FinanceTransaction, ScholarshipProgram, User
+from ..models import (
+    Announcement,
+    Application,
+    ApplicationDocument,
+    FinanceTransaction,
+    Followup,
+    PrayerRequest,
+    ReviewAssignment,
+    ReviewCriterion,
+    Selection,
+    User,
+)
 
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
@@ -18,6 +29,8 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter(tags=["views"])
 AuthenticatedUser = Annotated[User, Depends(get_current_user)]
 Manager = Annotated[User, Depends(require_roles("administrator", "program_manager"))]
+Reviewer = Annotated[User, Depends(require_roles("reviewer"))]
+Applicant = Annotated[User, Depends(require_roles("applicant"))]
 
 
 @router.get("/login", name="login_page")
@@ -123,3 +136,97 @@ def application_form(
         {"request": request, "announcement": announcement, "existing_application": existing}
     )
     return templates.TemplateResponse(request=request, name="application_form.html", context=context)
+
+
+@router.get("/reviewer/dashboard", name="reviewer_dashboard")
+def reviewer_dashboard(
+    request: Request,
+    user: Reviewer,
+    db: Annotated[Session, Depends(get_db)],
+):
+    assignments = list(
+        db.scalars(
+            select(ReviewAssignment)
+            .where(ReviewAssignment.reviewer_id == user.id)
+            .order_by(ReviewAssignment.created_at.desc())
+        )
+    )
+    review_items = []
+    for assignment in assignments:
+        application = db.get(Application, assignment.application_id)
+        criteria = list(
+            db.scalars(
+                select(ReviewCriterion).where(
+                    ReviewCriterion.announcement_id == application.announcement_id
+                )
+            )
+        ) if application else []
+        review_items.append({"assignment": assignment, "application": application, "criteria": criteria})
+    context = base_context(user)
+    context.update({"request": request, "review_items": review_items})
+    return templates.TemplateResponse(request=request, name="reviewer_dashboard.html", context=context)
+
+
+@router.get("/my-page", name="my_page")
+def my_page(
+    request: Request,
+    user: Applicant,
+    db: Annotated[Session, Depends(get_db)],
+):
+    applications = list(
+        db.scalars(
+            select(Application)
+            .where(Application.applicant_id == user.id)
+            .order_by(Application.created_at.desc())
+        )
+    )
+    followups = list(
+        db.scalars(
+            select(Followup)
+            .where(Followup.applicant_id == user.id)
+            .order_by(Followup.created_at.desc())
+        )
+    )
+    selections = list(
+        db.scalars(select(Selection).where(Selection.applicant_id == user.id))
+    )
+    context = base_context(user)
+    context.update(
+        {"request": request, "applications": applications, "followups": followups, "selections": selections}
+    )
+    return templates.TemplateResponse(request=request, name="my_page.html", context=context)
+
+
+@router.get("/admin/applications/{application_id}", name="admin_application_detail")
+def admin_application_detail(
+    request: Request,
+    application_id: str,
+    user: Manager,
+    db: Annotated[Session, Depends(get_db)],
+):
+    application = db.get(Application, application_id)
+    if application is None:
+        raise HTTPException(status_code=404, detail="신청서를 찾을 수 없습니다.")
+    documents = list(
+        db.scalars(select(ApplicationDocument).where(ApplicationDocument.application_id == application_id))
+    )
+    prayer_requests = list(
+        db.scalars(
+            select(PrayerRequest).where(
+                PrayerRequest.user_id == application.applicant_id,
+                PrayerRequest.status == "active",
+            )
+        )
+    )
+    selection = db.scalar(select(Selection).where(Selection.application_id == application_id))
+    context = base_context(user)
+    context.update(
+        {
+            "request": request,
+            "application": application,
+            "documents": documents,
+            "prayer_requests": prayer_requests,
+            "selection": selection,
+        }
+    )
+    return templates.TemplateResponse(request=request, name="admin_application_detail.html", context=context)

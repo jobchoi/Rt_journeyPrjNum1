@@ -11,7 +11,7 @@
 
 ## 현재 단계
 
-현재는 초기 데이터베이스 마이그레이션을 검증하는 단계입니다. 애플리케이션 코드와 외부 연동은 아직 작성하지 않습니다.
+현재는 FastAPI 기반 MVP와 역할별 서버 렌더링 화면을 검증하는 단계입니다.
 
 ## 주요 사용자
 
@@ -41,8 +41,9 @@
 ├── DEVELOPMENT.md
 ├── TASKS.md
 ├── AI_CONTEXT.md
-├── src/          # 애플리케이션 코드 예정
-├── tests/        # 테스트 코드 예정
+├── src/          # FastAPI 애플리케이션 코드
+├── templates/    # Jinja2 서버 렌더링 화면
+├── tests/        # pytest 회귀 테스트
 ├── database/     # 스키마 및 버전 관리 마이그레이션
 ├── docs/         # 추가 설계 문서
 └── scripts/      # 운영 및 개발 보조 스크립트 예정
@@ -56,6 +57,7 @@
 - [DEVELOPMENT.md](DEVELOPMENT.md): 개발 및 협업 규칙
 - [TASKS.md](TASKS.md): 단계별 개발 작업 목록
 - [AI_CONTEXT.md](AI_CONTEXT.md): AI 코딩 도구용 프로젝트 맥락
+- [UI_UX_PLAN.md](UI_UX_PLAN.md): 사이트맵·권한·화면 명세
 
 ## 운영 준비 명령
 
@@ -69,6 +71,14 @@ pytest -q
 ```bash
 alembic downgrade base
 ```
+
+최초 관리자 생성:
+
+```bash
+python scripts/create_superuser.py --email admin@example.com --name "최고 관리자"
+```
+
+실행 후 터미널에서 비밀번호를 두 번 입력합니다. 일반 회원가입에서 관리자 역할을 열 필요가 없습니다.
 
 ## 초기 스키마 검증
 

@@ -158,6 +158,15 @@ curl http://127.0.0.1:8001/docs
 - 인증 없는 웹 뷰 요청은 `303 /login`으로 이동
 - `/api/` 인증 오류는 기존 `401` JSON 응답 유지
 - `tests/test_mvp_workflows.py`에 두 응답 정책 회귀 테스트 추가
+
+### UI/UX 계획 및 누락 화면
+
+- `UI_UX_PLAN.md`에 전체 사이트맵·역할·화면 명세 작성
+- `scripts/create_superuser.py`: 공개 역할 가입과 분리된 초기 administrator 생성 CLI
+- `GET /reviewer/dashboard`: 배정된 심사 건과 기준별 평가 입력
+- `GET /my-page`: 본인 신청 상태와 선발 후 사후보고·증빙 흐름
+- `GET /admin/applications/{application_id}`: 관리자 신청 원문·증빙·기도제목·선발·지급
+- 세 화면 모두 역할 Dependency와 공통 Glassmorphism 레이아웃 사용
 - 로그인·회원가입 화면 렌더링: `200`
 - 쿠키만 사용한 관리자 대시보드 접근: `200`
 - 쿠키만 사용한 신청자 공고 목록 접근: `200`
@@ -172,6 +181,8 @@ curl http://127.0.0.1:8001/docs
 - pytest MVP 회귀 테스트: `3 passed`
 - Alembic upgrade/current/downgrade: 통과
 - 브라우저 401 리다이렉트·API 401 JSON 회귀 테스트: 통과
+- 누락 화면 역할별 렌더링·접근 차단: 통과
+- superuser CLI `--help`·문법 검증: 통과
 - 신청 폼 렌더링: `200`
 - 신청서 제출 및 본인 조회: 통과
 - 중복 신청: `409`
@@ -231,6 +242,12 @@ curl http://127.0.0.1:8001/docs
 ### 2026-09-19: Step 8 운영 준비
 
 - 검증: pytest 정식 테스트 3개 통과, Alembic 초기 migration 적용·롤백 통과
+
+### 2026-09-19: 누락 화면 및 superuser CLI
+
+- 구현: 심사위원·신청자·관리자 화면과 역할 보호 라우터 추가
+- 구현: superuser CLI는 비밀번호를 `getpass`로 입력받고 `ALLOW_ROLE_REGISTRATION` 없이 administrator를 생성
+- 검증: 세 화면 200/403 접근 정책과 CLI 문법·도움말 확인
 
 ### 2026-09-19: 심사 워크플로 구현
 

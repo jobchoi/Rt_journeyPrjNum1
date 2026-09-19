@@ -43,6 +43,24 @@ def test_browser_unauthenticated_pages_redirect_to_login(client):
     assert api_response.json()["detail"] == "인증 토큰이 필요합니다."
 
 
+def test_role_specific_missing_views(client):
+    admin_headers, _ = register_and_login(client, "administrator")
+    applicant_headers, _ = register_and_login(client)
+    reviewer_headers, _ = register_and_login(client, "reviewer")
+    announcement = create_open_announcement(client, admin_headers)
+    application = client.post(
+        "/api/applications",
+        headers=applicant_headers,
+        json={"announcement_id": announcement["id"], "study_plan": "학업", "financial_need": "필요"},
+    ).json()
+    assert client.get("/reviewer/dashboard", headers=reviewer_headers).status_code == 200
+    assert client.get("/reviewer/dashboard", headers=applicant_headers).status_code == 403
+    assert client.get("/my-page", headers=applicant_headers).status_code == 200
+    assert client.get("/my-page", headers=reviewer_headers).status_code == 403
+    assert client.get(f"/admin/applications/{application['id']}", headers=admin_headers).status_code == 200
+    assert client.get(f"/admin/applications/{application['id']}", headers=applicant_headers).status_code == 403
+
+
 def test_auth_and_application_flow(client):
     admin_headers, _ = register_and_login(client, "administrator")
     applicant_headers, _ = register_and_login(client)
