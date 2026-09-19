@@ -102,6 +102,43 @@ CREATE TABLE applications (
     FOREIGN KEY (announcement_id) REFERENCES announcements (id) ON DELETE RESTRICT
 );
 
+CREATE TABLE review_criteria (
+    id TEXT PRIMARY KEY,
+    announcement_id TEXT NOT NULL,
+    code TEXT NOT NULL,
+    name TEXT NOT NULL,
+    max_score INTEGER NOT NULL CHECK (max_score > 0),
+    required INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (announcement_id, code),
+    FOREIGN KEY (announcement_id) REFERENCES announcements (id) ON DELETE CASCADE
+);
+
+CREATE TABLE review_assignments (
+    id TEXT PRIMARY KEY,
+    application_id TEXT NOT NULL,
+    reviewer_id TEXT NOT NULL,
+    recused_at TEXT,
+    recusal_reason TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (application_id, reviewer_id),
+    FOREIGN KEY (application_id) REFERENCES applications (id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewer_id) REFERENCES users (id) ON DELETE RESTRICT
+);
+
+CREATE TABLE reviews (
+    id TEXT PRIMARY KEY,
+    assignment_id TEXT NOT NULL,
+    criterion_id TEXT NOT NULL,
+    score INTEGER NOT NULL CHECK (score >= 0),
+    comment TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (assignment_id, criterion_id),
+    FOREIGN KEY (assignment_id) REFERENCES review_assignments (id) ON DELETE CASCADE,
+    FOREIGN KEY (criterion_id) REFERENCES review_criteria (id) ON DELETE RESTRICT
+);
+
 -- Prayer requests are pastoral-care data only. There is intentionally no review
 -- or score foreign key in this table.
 CREATE TABLE prayer_requests (
@@ -135,6 +172,9 @@ CREATE INDEX idx_announcements_program_id ON announcements (program_id);
 CREATE INDEX idx_announcements_status ON announcements (status);
 CREATE INDEX idx_applications_applicant_id ON applications (applicant_id);
 CREATE INDEX idx_applications_announcement_id ON applications (announcement_id);
+CREATE INDEX idx_review_criteria_announcement_id ON review_criteria (announcement_id);
+CREATE INDEX idx_review_assignments_reviewer_id ON review_assignments (reviewer_id);
+CREATE INDEX idx_reviews_assignment_id ON reviews (assignment_id);
 CREATE INDEX idx_prayer_requests_user_id ON prayer_requests (user_id);
 CREATE INDEX idx_prayer_access_logs_request_id
     ON prayer_request_access_logs (prayer_request_id);

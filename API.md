@@ -60,6 +60,12 @@
 | `DELETE` | `/api/announcements/{announcementId}` | 공고 삭제 | 관리자·사업 담당자 |
 | `POST` | `/api/applications` | 장학금 신청서 제출 | 신청자 |
 | `GET` | `/api/applications/me` | 내 신청서 목록 | 신청자 |
+| `POST` | `/api/review-criteria` | 공고 심사 기준 생성 | 관리자·사업 담당자 |
+| `GET` | `/api/review-criteria/{announcementId}` | 공고 심사 기준 조회 | 관리자·사업 담당자 |
+| `POST` | `/api/review-assignments` | 신청 건 심사위원 배정 | 관리자·사업 담당자 |
+| `GET` | `/api/review-assignments/me` | 내 심사 배정 조회 | 심사위원 |
+| `POST` | `/api/review-assignments/{assignmentId}/recusal` | 심사 회피 | 심사위원 |
+| `PUT` | `/api/review-assignments/{assignmentId}/review` | 기준별 심사 점수 저장 | 심사위원 |
 
 ## 5. 신청 및 서류
 

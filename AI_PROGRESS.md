@@ -56,6 +56,18 @@
 - 모집 중 공고 카드의 `신청하기` 버튼 연결
 - 신청 성공 후 공고 목록으로 이동
 
+### 심사 워크플로 Step 5
+
+- `review_criteria`: 공고별 기준과 최대 점수
+- `review_assignments`: 신청 건과 reviewer 배정, 회피 사유
+- `reviews`: 배정 건의 기준별 점수와 의견
+- `POST /api/review-criteria`: 관리자·사업 담당자 기준 생성
+- `POST /api/review-assignments`: 관리자·사업 담당자 배정
+- `GET /api/review-assignments/me`: reviewer 본인 배정 조회
+- `POST /api/review-assignments/{id}/recusal`: reviewer 회피
+- `PUT /api/review-assignments/{id}/review`: 배정된 reviewer의 점수 저장
+- 점수는 기준별 `max_score`를 초과할 수 없고 기도제목 테이블과 연결되지 않음
+
 ### 장학금 신청 Step 4
 
 - `applications` 모델: 신청자, 공고, 상태, 학업 계획, 경제적 필요, 사역 계획
@@ -109,6 +121,9 @@ curl http://127.0.0.1:8001/docs
 - 관리자 대시보드 HTML 렌더링: `200`
 - 신청자 공고 목록 HTML 렌더링: `200`
 - 신청자의 관리자 대시보드 접근: `403`
+- 심사 기준·배정·평가 흐름: 통과
+- 기준 최대점 초과 평가: `422`
+- 기도제목과 심사 외래키 분리: 확인
 - 로그인·회원가입 화면 렌더링: `200`
 - 쿠키만 사용한 관리자 대시보드 접근: `200`
 - 쿠키만 사용한 신청자 공고 목록 접근: `200`
@@ -160,6 +175,11 @@ curl http://127.0.0.1:8001/docs
 - 원인: `access_token` Cookie 의존성이 선택값이 아닌 필수값으로 선언됨
 - 수정: Cookie 인자의 기본값을 `None`으로 설정
 - 검증: 관리자 공고 생성과 applicant 신청 제출 흐름 재통과
+
+### 2026-09-19: 심사 워크플로 구현
+
+- 설계: 심사 기준, 배정, 평가를 별도 테이블로 분리하고 `prayer_requests`를 참조하지 않음
+- 검증: 관리자 기준 생성·배정, reviewer 점수 저장, 점수 상한 오류, 권한 분리 통과
 
 ### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
 

@@ -71,3 +71,47 @@ class ApplicationResponse(BaseModel):
     submitted_at: datetime
     created_at: datetime
     updated_at: datetime
+
+
+class ReviewCriterionCreate(BaseModel):
+    announcement_id: str = Field(min_length=1, max_length=100)
+    code: str = Field(min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=200)
+    max_score: int = Field(gt=0, le=1000)
+    required: bool = True
+
+
+class ReviewCriterionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    announcement_id: str
+    code: str
+    name: str
+    max_score: int
+    required: bool
+
+
+class ReviewAssignmentCreate(BaseModel):
+    application_id: str = Field(min_length=1, max_length=100)
+    reviewer_id: str = Field(min_length=1, max_length=100)
+
+
+class ReviewScoreInput(BaseModel):
+    criterion_id: str = Field(min_length=1, max_length=100)
+    score: int = Field(ge=0)
+    comment: str | None = Field(default=None, max_length=10000)
+
+
+class ReviewSubmit(BaseModel):
+    scores: list[ReviewScoreInput] = Field(min_length=1)
+
+
+class ReviewAssignmentResponse(BaseModel):
+    id: str
+    application_id: str
+    reviewer_id: str
+    recused_at: datetime | None
+    recusal_reason: str | None
+    total_score: int
+    review_count: int

@@ -66,6 +66,9 @@ class User(Base):
     applications: Mapped[list["Application"]] = relationship(
         back_populates="applicant", foreign_keys="Application.applicant_id"
     )
+    review_assignments: Mapped[list["ReviewAssignment"]] = relationship(
+        back_populates="reviewer", foreign_keys="ReviewAssignment.reviewer_id"
+    )
     prayer_requests: Mapped[list["PrayerRequest"]] = relationship(
         back_populates="user", foreign_keys="PrayerRequest.user_id"
     )
@@ -183,6 +186,9 @@ class Announcement(Base):
         back_populates="announcements_created", foreign_keys=[created_by]
     )
     applications: Mapped[list["Application"]] = relationship(back_populates="announcement")
+    review_criteria: Mapped[list["ReviewCriterion"]] = relationship(
+        back_populates="announcement", cascade="all, delete-orphan"
+    )
 
 
 class Application(Base):
@@ -272,3 +278,81 @@ class PrayerRequestAccessLog(Base):
         DateTime, server_default=func.current_timestamp(), nullable=False
     )
     prayer_request: Mapped[PrayerRequest] = relationship(back_populates="access_logs")
+
+
+class ReviewCriterion(Base):
+    __tablename__ = "review_criteria"
+    __table_args__ = (
+        UniqueConstraint("announcement_id", "code", name="uq_review_criterion_announcement_code"),
+        CheckConstraint("max_score > 0", name="ck_review_criterion_max_score"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    announcement_id: Mapped[str] = mapped_column(
+        String, ForeignKey("announcements.id", ondelete="CASCADE"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    max_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    required: Mapped[bool] = mapped_column(default=True, server_default="1", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    announcement: Mapped[Announcement] = relationship(back_populates="review_criteria")
+    reviews: Mapped[list["Review"]] = relationship(back_populates="criterion")
+
+
+class ReviewAssignment(Base):
+    __tablename__ = "review_assignments"
+    __table_args__ = (
+        UniqueConstraint("application_id", "reviewer_id", name="uq_review_assignment_application_reviewer"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    application_id: Mapped[str] = mapped_column(
+        String, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+    )
+    reviewer_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    recused_at: Mapped[datetime | None] = mapped_column(DateTime)
+    recusal_reason: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    application: Mapped[Application] = relationship()
+    reviewer: Mapped[User] = relationship(
+        back_populates="review_assignments", foreign_keys=[reviewer_id]
+    )
+    reviews: Mapped[list["Review"]] = relationship(
+        back_populates="assignment", cascade="all, delete-orphan"
+    )
+
+
+class Review(Base):
+    __tablename__ = "reviews"
+    __table_args__ = (
+        UniqueConstraint("assignment_id", "criterion_id", name="uq_review_assignment_criterion"),
+        CheckConstraint("score >= 0", name="ck_review_score_nonnegative"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    assignment_id: Mapped[str] = mapped_column(
+        String, ForeignKey("review_assignments.id", ondelete="CASCADE"), nullable=False
+    )
+    criterion_id: Mapped[str] = mapped_column(
+        String, ForeignKey("review_criteria.id", ondelete="RESTRICT"), nullable=False
+    )
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        nullable=False,
+    )
+    assignment: Mapped[ReviewAssignment] = relationship(back_populates="reviews")
+    criterion: Mapped[ReviewCriterion] = relationship(back_populates="reviews")
