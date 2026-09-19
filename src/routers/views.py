@@ -58,6 +58,10 @@ def admin_dashboard(
         )
     ) or 0
     transaction_count = db.scalar(select(func.count(FinanceTransaction.id))) or 0
+    applicant_count = db.scalar(select(func.count(Application.id))) or 0
+    selected_count = db.scalar(
+        select(func.count(Application.id)).where(Application.status == "selected")
+    ) or 0
     context = base_context(user)
     context.update(
         {
@@ -71,6 +75,8 @@ def admin_dashboard(
                 "balance": int(total_income) - int(total_expense),
                 "count": int(transaction_count),
             },
+            "applicant_count": int(applicant_count),
+            "selected_count": int(selected_count),
         }
     )
     return templates.TemplateResponse(request=request, name="admin_dashboard.html", context=context)

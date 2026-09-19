@@ -144,6 +144,14 @@ curl http://127.0.0.1:8001/docs
 - PDF/JPEG/PNG, 10MB 제한, 신청자 본인 업로드
 - 본인·관리자·사업 담당자만 다운로드 가능
 - 신청자와 기도제목 데이터는 파일 권한이나 선발 계산에 혼합하지 않음
+
+### 운영 준비·테스트 Step 8
+
+- `alembic.ini`, `alembic/env.py`, `alembic/versions/0001_initial_schema.py` 추가
+- 기존 초기 SQL을 Alembic `upgrade head`로 적용하고 `downgrade base`로 롤백 가능
+- `tests/conftest.py`, `tests/test_mvp_workflows.py` 추가
+- 인증·신청·선발·지급·사후관리·CSV·증빙 핵심 흐름 pytest 정식화
+- 관리자 대시보드에 총 신청자·선발자·재정 잔액 지표 추가
 - 로그인·회원가입 화면 렌더링: `200`
 - 쿠키만 사용한 관리자 대시보드 접근: `200`
 - 쿠키만 사용한 신청자 공고 목록 접근: `200`
@@ -155,6 +163,8 @@ curl http://127.0.0.1:8001/docs
 - 재정 CSV 업로드·잔액 집계·중복 거래번호 차단: 통과
 - 선발·지급·재정 expense 연결: 통과
 - 증빙 PDF 업로드·다운로드와 파일 권한: 통과
+- pytest MVP 회귀 테스트: `3 passed`
+- Alembic upgrade/current/downgrade: 통과
 - 신청 폼 렌더링: `200`
 - 신청서 제출 및 본인 조회: 통과
 - 중복 신청: `409`
@@ -211,6 +221,10 @@ curl http://127.0.0.1:8001/docs
 - 보안: 업로드 파일은 UUID 저장명, 확장자·10MB 제한, 소유자/운영자 권한 검사
 - 검증: 선발·지급·잔액·파일 업로드/다운로드 전체 흐름 통과
 
+### 2026-09-19: Step 8 운영 준비
+
+- 검증: pytest 정식 테스트 3개 통과, Alembic 초기 migration 적용·롤백 통과
+
 ### 2026-09-19: 심사 워크플로 구현
 
 - 설계: 심사 기준, 배정, 평가를 별도 테이블로 분리하고 `prayer_requests`를 참조하지 않음
@@ -228,4 +242,4 @@ curl http://127.0.0.1:8001/docs
 1. 운영용 HttpOnly/Secure 쿠키와 CSRF 방어 결정
 2. 관리자 생성 폼의 API 제출 연결
 3. API 자동화 테스트 파일을 `tests/`에 정식 추가
-4. Alembic 마이그레이션 도입
+4. 운영용 HttpOnly/Secure 쿠키와 CSRF 방어 결정

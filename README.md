@@ -57,6 +57,19 @@
 - [TASKS.md](TASKS.md): 단계별 개발 작업 목록
 - [AI_CONTEXT.md](AI_CONTEXT.md): AI 코딩 도구용 프로젝트 맥락
 
+## 운영 준비 명령
+
+```bash
+alembic upgrade head
+pytest -q
+```
+
+초기 스키마를 되돌릴 때는 다음 명령을 사용합니다.
+
+```bash
+alembic downgrade base
+```
+
 ## 초기 스키마 검증
 
 현재 마이그레이션은 SQLite에서 먼저 검증할 수 있습니다.

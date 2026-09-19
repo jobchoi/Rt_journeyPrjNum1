@@ -36,10 +36,12 @@
   </div>
 
   <div class="space-y-6">
-    <div class="grid gap-4 sm:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <div class="rounded-3xl bg-white p-6 shadow-soft"><p class="text-xs font-medium text-slate-500">전체 사업</p><p class="mt-4 text-3xl font-semibold tracking-tight">{{ programs|length }}</p><p class="mt-2 text-xs text-slate-400">등록된 사업</p></div>
       <div class="rounded-3xl bg-white p-6 shadow-soft"><p class="text-xs font-medium text-slate-500">모집 중</p><p class="mt-4 text-3xl font-semibold tracking-tight text-blue-600">{{ open_count }}</p><p class="mt-2 text-xs text-slate-400">활성 사업</p></div>
       <div class="rounded-3xl bg-white p-6 shadow-soft"><p class="text-xs font-medium text-slate-500">공고</p><p class="mt-4 text-3xl font-semibold tracking-tight">{{ announcements|length }}</p><p class="mt-2 text-xs text-slate-400">전체 공고</p></div>
+      <div class="rounded-3xl bg-white p-6 shadow-soft"><p class="text-xs font-medium text-slate-500">신청자</p><p class="mt-4 text-3xl font-semibold tracking-tight">{{ applicant_count }}</p><p class="mt-2 text-xs text-slate-400">접수된 신청</p></div>
+      <div class="rounded-3xl bg-white p-6 shadow-soft"><p class="text-xs font-medium text-slate-500">선발자</p><p class="mt-4 text-3xl font-semibold tracking-tight text-blue-600">{{ selected_count }}</p><p class="mt-2 text-xs text-slate-400">최종 선발</p></div>
     </div>
 
     <div class="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white p-7 shadow-soft">
