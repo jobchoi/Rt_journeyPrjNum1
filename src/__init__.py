@@ -1,0 +1,1 @@
+"""Rt scholarship platform application package."""
