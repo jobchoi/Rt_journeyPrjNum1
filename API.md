@@ -66,6 +66,10 @@
 | `GET` | `/api/review-assignments/me` | 내 심사 배정 조회 | 심사위원 |
 | `POST` | `/api/review-assignments/{assignmentId}/recusal` | 심사 회피 | 심사위원 |
 | `PUT` | `/api/review-assignments/{assignmentId}/review` | 기준별 심사 점수 저장 | 심사위원 |
+| `POST` | `/api/followups` | 선발자 사후보고 제출 | 신청자 |
+| `GET` | `/api/followups/me` | 내 사후보고 조회 | 신청자 |
+| `POST` | `/api/finance/transactions/import` | 통합기금 CSV 거래내역 반영 | 관리자·사업 담당자·지급 담당자 |
+| `GET` | `/api/finance/overview` | 입금·지출·잔액 요약 | 관리자·사업 담당자·지급 담당자 |
 
 ## 5. 신청 및 서류
 

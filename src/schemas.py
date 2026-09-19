@@ -115,3 +115,45 @@ class ReviewAssignmentResponse(BaseModel):
     recusal_reason: str | None
     total_score: int
     review_count: int
+
+
+class FollowupCreate(BaseModel):
+    application_id: str = Field(min_length=1, max_length=100)
+    academic_update: str = Field(min_length=1, max_length=10000)
+    ministry_update: str = Field(min_length=1, max_length=10000)
+    evidence_note: str | None = Field(default=None, max_length=10000)
+
+
+class FollowupResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    application_id: str
+    applicant_id: str
+    status: str
+    academic_update: str
+    ministry_update: str
+    evidence_note: str | None
+    submitted_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class FinanceTransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    transaction_date: datetime
+    transaction_type: str
+    amount: int
+    description: str
+    external_reference: str
+    source_filename: str | None
+    created_at: datetime
+
+
+class FinanceOverviewResponse(BaseModel):
+    total_income: int
+    total_expense: int
+    balance: int
+    transaction_count: int

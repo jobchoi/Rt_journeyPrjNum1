@@ -5,12 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import get_current_user, require_roles
-from ..models import Announcement, Application, ScholarshipProgram, User
+from ..models import Announcement, Application, FinanceTransaction, ScholarshipProgram, User
 
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
@@ -47,6 +47,17 @@ def admin_dashboard(
     announcements = list(
         db.scalars(select(Announcement).order_by(Announcement.created_at.desc()))
     )
+    total_income = db.scalar(
+        select(func.coalesce(func.sum(FinanceTransaction.amount), 0)).where(
+            FinanceTransaction.transaction_type == "income"
+        )
+    ) or 0
+    total_expense = db.scalar(
+        select(func.coalesce(func.sum(FinanceTransaction.amount), 0)).where(
+            FinanceTransaction.transaction_type == "expense"
+        )
+    ) or 0
+    transaction_count = db.scalar(select(func.count(FinanceTransaction.id))) or 0
     context = base_context(user)
     context.update(
         {
@@ -54,6 +65,12 @@ def admin_dashboard(
             "programs": programs,
             "announcements": announcements,
             "open_count": sum(program.status == "active" for program in programs),
+            "finance": {
+                "income": int(total_income),
+                "expense": int(total_expense),
+                "balance": int(total_income) - int(total_expense),
+                "count": int(transaction_count),
+            },
         }
     )
     return templates.TemplateResponse(request=request, name="admin_dashboard.html", context=context)

@@ -139,6 +139,34 @@ CREATE TABLE reviews (
     FOREIGN KEY (criterion_id) REFERENCES review_criteria (id) ON DELETE RESTRICT
 );
 
+CREATE TABLE followups (
+    id TEXT PRIMARY KEY,
+    application_id TEXT NOT NULL,
+    applicant_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'submitted',
+    academic_update TEXT NOT NULL,
+    ministry_update TEXT NOT NULL,
+    evidence_note TEXT,
+    submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications (id) ON DELETE RESTRICT,
+    FOREIGN KEY (applicant_id) REFERENCES users (id) ON DELETE RESTRICT
+);
+
+CREATE TABLE finance_transactions (
+    id TEXT PRIMARY KEY,
+    transaction_date TEXT NOT NULL,
+    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('income', 'expense')),
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    description TEXT NOT NULL,
+    external_reference TEXT NOT NULL UNIQUE,
+    source_filename TEXT,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT
+);
+
 -- Prayer requests are pastoral-care data only. There is intentionally no review
 -- or score foreign key in this table.
 CREATE TABLE prayer_requests (
@@ -175,6 +203,9 @@ CREATE INDEX idx_applications_announcement_id ON applications (announcement_id);
 CREATE INDEX idx_review_criteria_announcement_id ON review_criteria (announcement_id);
 CREATE INDEX idx_review_assignments_reviewer_id ON review_assignments (reviewer_id);
 CREATE INDEX idx_reviews_assignment_id ON reviews (assignment_id);
+CREATE INDEX idx_followups_applicant_id ON followups (applicant_id);
+CREATE INDEX idx_followups_application_id ON followups (application_id);
+CREATE INDEX idx_finance_transactions_type ON finance_transactions (transaction_type);
 CREATE INDEX idx_prayer_requests_user_id ON prayer_requests (user_id);
 CREATE INDEX idx_prayer_access_logs_request_id
     ON prayer_request_access_logs (prayer_request_id);

@@ -17,6 +17,8 @@ from .models import Role, User
 from .schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from .routers.announcements import router as announcements_router
 from .routers.applications import router as applications_router
+from .routers.finance import router as finance_router
+from .routers.followups import router as followups_router
 from .routers.programs import router as programs_router
 from .routers.reviews import router as reviews_router
 from .routers.views import router as views_router
@@ -67,6 +69,8 @@ app = FastAPI(title="Rt Scholarship Platform", lifespan=lifespan)
 app.include_router(programs_router)
 app.include_router(announcements_router)
 app.include_router(applications_router)
+app.include_router(followups_router)
+app.include_router(finance_router)
 app.include_router(reviews_router)
 app.include_router(views_router)
 

@@ -29,6 +29,8 @@ def main() -> None:
         "review_criteria",
         "review_assignments",
         "reviews",
+        "followups",
+        "finance_transactions",
         "fund_categories",
         "prayer_requests",
         "prayer_request_access_logs",
