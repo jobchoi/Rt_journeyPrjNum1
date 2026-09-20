@@ -56,13 +56,13 @@ async def import_transactions(
     try:
         decoded = content.decode("utf-8-sig")
     except UnicodeDecodeError:
-        raise HTTPException(status_code=422, detail="UTF-8 CSV 파일만 지원합니다.") from None
+        raise HTTPException(status_code=400, detail="UTF-8 CSV 파일만 지원합니다. BOM 제거 및 텍스트 인코딩을 확인해 주세요.") from None
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = [name.strip() if name is not None else name for name in (reader.fieldnames or [])]
     missing = [column for column in sorted(REQUIRED_COLUMNS) if column not in fieldnames]
     if not fieldnames or missing:
-        missing_detail = ", ".join(missing)
+        missing_detail = ", ".join(missing) if missing else "알 수 없음"
         raise HTTPException(
             status_code=400,
             detail=f"필수 컬럼이 누락되었습니다: {missing_detail}",
@@ -74,13 +74,13 @@ async def import_transactions(
         reference = (row.get("external_reference") or "").strip()
         transaction_type = (row.get("transaction_type") or "").strip().lower()
         if not reference or reference in references:
-            raise HTTPException(status_code=422, detail=f"{row_number}행 external_reference가 중복 또는 비어 있습니다.")
+            raise HTTPException(status_code=400, detail=f"{row_number}행 external_reference가 비어 있거나 중복입니다.")
         if transaction_type not in {"income", "expense"}:
-            raise HTTPException(status_code=422, detail=f"{row_number}행 transaction_type이 올바르지 않습니다.")
+            raise HTTPException(status_code=400, detail=f"{row_number}행 transaction_type이 올바르지 않습니다.")
         try:
             transaction_date = datetime.fromisoformat((row.get("transaction_date") or "").strip())
         except ValueError:
-            raise HTTPException(status_code=422, detail=f"{row_number}행 transaction_date가 올바르지 않습니다.") from None
+            raise HTTPException(status_code=400, detail=f"{row_number}행 transaction_date가 올바르지 않습니다.") from None
         references.add(reference)
         transactions.append(
             FinanceTransaction(
@@ -95,7 +95,7 @@ async def import_transactions(
             )
         )
     if not transactions:
-        raise HTTPException(status_code=422, detail="CSV에 거래내역이 없습니다.")
+        raise HTTPException(status_code=400, detail="CSV에 거래내역이 없습니다.")
     existing = set(
         db.scalars(
             select(FinanceTransaction.external_reference).where(

@@ -290,6 +290,15 @@ curl http://127.0.0.1:8001/docs
 - 수정: `templates/admin_dashboard.html`에서 CSV 업로드 안내 문구를 추가해 필수 헤더 형식을 사용자에게 표시
 - 검증: 올바른 BOM 포함 CSV와 누락된 컬럼 CSV를 직접 넣어 정상 처리와 오류 응답을 확인
 
+### 2026-09-20: CSV 업로드 422 에러 및 BOM 파싱 로직 수정
+
+- 증상: 관리자 대시보드에서 CSV 업로드 시 multipart/form-data 전송 구조와 BOM 포함 헤더가 충돌해 `422 Unprocessable Content`가 발생함
+- 원인 1: 브라우저가 `FormData`를 보낼 때 `Content-Type`을 직접 설정하면 multipart boundary가 깨지며 업로드 파싱이 실패함
+- 원인 2: 엑셀 저장 CSV에 BOM이 포함되면 첫 헤더 이름이 `f...`처럼 인식되어 필수 컬럼 검증이 실패함
+- 수정: `templates/admin_dashboard.html`에서 파일 업로드를 `new FormData(event.target)`로 전달하고, `headers`를 제거해 브라우저가 multipart boundary를 자동 생성하도록 변경
+- 수정: `src/routers/finance.py`에서 `utf-8-sig` 디코딩, 필수 헤더 검증, 그리고 400 JSON 에러 메시지로 예외 처리를 일관시키도록 보강
+- 검증: 정상 CSV 업로드와 누락 헤더 CSV를 직접 넣어 201/400 응답을 확인했다.
+
 ### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
 
 - 증상: Bearer 헤더를 보낸 관리자 API 요청이 `422`로 응답
