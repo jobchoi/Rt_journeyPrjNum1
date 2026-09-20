@@ -105,7 +105,7 @@ def announcements_list(
     announcements = list(
         db.scalars(
             select(Announcement)
-            .where(Announcement.status.in_(["open", "reviewing", "finished"]))
+            .where(Announcement.status == "open")
             .order_by(Announcement.application_end_at.asc(), Announcement.created_at.desc())
         )
     )

@@ -254,12 +254,14 @@ curl http://127.0.0.1:8001/docs
 - 설계: 심사 기준, 배정, 평가를 별도 테이블로 분리하고 `prayer_requests`를 참조하지 않음
 - 검증: 관리자 기준 생성·배정, reviewer 점수 저장, 점수 상한 오류, 권한 분리 통과
 
-### 2026-09-19: 관리자 대시보드 ScholarshipProgram import 누락
+### 2026-09-20: 공고 생성 흐름 및 공개 목록 연결
 
-- 증상: `/admin/dashboard` 접속 시 `NameError: ScholarshipProgram is not defined`
-- 원인: `src/routers/views.py`의 모델 import 목록에서 `ScholarshipProgram` 누락
-- 수정: 누락 모델 import 추가 및 전체 라우터 import·컴파일 점검
-- 검증: 관리자 인증 대시보드 HTML `200`, pytest `5 passed`
+- 증상: 프로그램 생성은 JSON 전송으로 정상 동작하지만, 관리자 대시보드에서 공고 생성이 이어지지 않고 일반 계정의 `/announcements` 목록에 `open` 공고가 보이지 않음
+- 원인 1: 관리자 대시보드에 공고 생성 폼이 없고, `POST /api/announcements`를 브라우저가 URL-encoded로 보내는 구조였음
+- 원인 2: 공개 목록 뷰에서 `Announcement.status.in_(["open", "reviewing", "finished"])`로 걸러서 일반 계정이 비공개 상태 공고까지 보이게 되어 있었음
+- 수정: 관리자 대시보드에 `announcement-form`을 추가하고 `JSON.stringify()` + `application/json` fetch로 생성하도록 변경
+- 수정: `/announcements` 뷰를 `status == "open"`으로 제한해 일반 계정 목록의 공개 공고만 렌더링
+- 검증: 관리자→프로그램 생성→공고 생성→신청자 목록 조회 흐름을 `TestClient`로 검증하고 `200 OK`와 `open` 공고 노출 확인
 
 ### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
 

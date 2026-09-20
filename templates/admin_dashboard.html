@@ -12,27 +12,64 @@
 </section>
 
 <section class="mt-8 grid gap-6 lg:grid-cols-[1fr_1.45fr]">
-  <div class="glass rounded-3xl border border-white/80 p-7 shadow-soft">
-    <div class="mb-8 flex items-start justify-between">
-      <div>
-        <p class="eyebrow text-[10px] font-semibold uppercase text-blue-600">New program</p>
-        <h2 class="mt-2 text-2xl font-semibold tracking-tight">새 장학 사업</h2>
+  <div class="space-y-6">
+    <div class="glass rounded-3xl border border-white/80 p-7 shadow-soft">
+      <div class="mb-8 flex items-start justify-between">
+        <div>
+          <p class="eyebrow text-[10px] font-semibold uppercase text-blue-600">New program</p>
+          <h2 class="mt-2 text-2xl font-semibold tracking-tight">새 장학 사업</h2>
+        </div>
+        <span class="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">Draft</span>
       </div>
-      <span class="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">Draft</span>
+      <form id="program-form" class="space-y-5">
+        <label class="block text-sm font-medium text-slate-700">사업명
+          <input id="program-name" name="name" required placeholder="예: 2026 Rt 리더십 장학사업" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+        </label>
+        <label class="block text-sm font-medium text-slate-700">설명
+          <textarea id="program-description" name="description" rows="4" placeholder="사업의 방향과 대상을 간단히 적어주세요." class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="text-sm font-medium text-slate-700">시작일<input id="program-start" type="date" name="application_start_at" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-600 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" /></label>
+          <label class="text-sm font-medium text-slate-700">종료일<input id="program-end" type="date" name="application_end_at" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-600 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" /></label>
+        </div>
+        <p id="program-message" class="hidden rounded-2xl px-4 py-3 text-xs"></p>
+        <button type="submit" class="w-full rounded-2xl bg-ink px-5 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md">사업 초안 저장</button>
+      </form>
     </div>
-    <form class="space-y-5" action="/api/programs" method="post">
-      <label class="block text-sm font-medium text-slate-700">사업명
-        <input name="name" required placeholder="예: 2026 Rt 리더십 장학사업" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
-      </label>
-      <label class="block text-sm font-medium text-slate-700">설명
-        <textarea name="description" rows="4" placeholder="사업의 방향과 대상을 간단히 적어주세요." class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
-      </label>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="text-sm font-medium text-slate-700">시작일<input type="date" name="application_start_at" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-600 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" /></label>
-        <label class="text-sm font-medium text-slate-700">종료일<input type="date" name="application_end_at" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-600 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" /></label>
+
+    <div class="glass rounded-3xl border border-white/80 p-7 shadow-soft">
+      <div class="mb-8 flex items-start justify-between">
+        <div>
+          <p class="eyebrow text-[10px] font-semibold uppercase text-blue-600">New announcement</p>
+          <h2 class="mt-2 text-2xl font-semibold tracking-tight">새 공고</h2>
+        </div>
+        <span class="rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Open</span>
       </div>
-      <button type="submit" class="w-full rounded-2xl bg-ink px-5 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md">사업 초안 저장</button>
-    </form>
+      <form id="announcement-form" class="space-y-5">
+        <label class="block text-sm font-medium text-slate-700">사업 선택
+          <select id="announcement-program-id" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+            {% for program in programs %}
+            <option value="{{ program.id }}">{{ program.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="block text-sm font-medium text-slate-700">공고 제목
+          <input id="announcement-title" required placeholder="예: 2026 하반기 장학금 공고" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+        </label>
+        <label class="block text-sm font-medium text-slate-700">지원 대상 설명
+          <textarea id="announcement-target" rows="3" placeholder="어떤 학생이 지원 가능한지 설명해주세요." class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"></textarea>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="text-sm font-medium text-slate-700">시작일<input id="announcement-start" type="date" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-600 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" /></label>
+          <label class="text-sm font-medium text-slate-700">마감일<input id="announcement-end" type="date" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-600 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" /></label>
+        </div>
+        <label class="block text-sm font-medium text-slate-700">선발 인원
+          <input id="announcement-selected" type="number" min="1" value="1" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" />
+        </label>
+        <p id="announcement-message" class="hidden rounded-2xl px-4 py-3 text-xs"></p>
+        <button type="submit" class="w-full rounded-2xl bg-emerald-600 px-5 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md">공고 공개</button>
+      </form>
+    </div>
   </div>
 
   <div class="space-y-6">
@@ -78,6 +115,76 @@
     } catch (error) {
       financeMessage.textContent = error.message;
       financeMessage.className = 'mt-4 rounded-2xl bg-red-50 px-4 py-3 text-xs text-red-700';
+    }
+  });
+
+  const programForm = document.getElementById('program-form');
+  const programMessage = document.getElementById('program-message');
+  programForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = {
+      name: document.getElementById('program-name').value,
+      description: document.getElementById('program-description').value || null,
+      status: 'draft',
+      application_start_at: document.getElementById('program-start').value || null,
+      application_end_at: document.getElementById('program-end').value || null,
+    };
+
+    try {
+      const response = await fetch('/api/programs', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || '사업 저장에 실패했습니다.');
+      programMessage.textContent = '사업이 저장되었습니다.';
+      programMessage.className = 'rounded-2xl bg-emerald-50 px-4 py-3 text-xs text-emerald-700';
+      programForm.reset();
+      const select = document.getElementById('announcement-program-id');
+      if (select) {
+        const option = document.createElement('option');
+        option.value = data.id;
+        option.textContent = data.name;
+        select.appendChild(option);
+        select.value = data.id;
+      }
+    } catch (error) {
+      programMessage.textContent = error.message;
+      programMessage.className = 'rounded-2xl bg-red-50 px-4 py-3 text-xs text-red-700';
+    }
+  });
+
+  const announcementForm = document.getElementById('announcement-form');
+  const announcementMessage = document.getElementById('announcement-message');
+  announcementForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = {
+      program_id: document.getElementById('announcement-program-id').value,
+      title: document.getElementById('announcement-title').value,
+      target_description: document.getElementById('announcement-target').value || null,
+      selected_count: Number(document.getElementById('announcement-selected').value) || 1,
+      payment_description: null,
+      status: 'open',
+      application_start_at: document.getElementById('announcement-start').value || null,
+      application_end_at: document.getElementById('announcement-end').value || null,
+    };
+
+    try {
+      const response = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || '공고 생성에 실패했습니다.');
+      announcementMessage.textContent = '공고가 공개되었습니다.';
+      announcementMessage.className = 'rounded-2xl bg-emerald-50 px-4 py-3 text-xs text-emerald-700';
+      announcementForm.reset();
+      window.location.href = '/announcements';
+    } catch (error) {
+      announcementMessage.textContent = error.message;
+      announcementMessage.className = 'rounded-2xl bg-red-50 px-4 py-3 text-xs text-red-700';
     }
   });
 </script>
