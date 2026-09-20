@@ -281,6 +281,15 @@ curl http://127.0.0.1:8001/docs
 - 수정: `announcements_list.html`에서 `announcement.id in applied_announcement_ids` 조건을 사용해 신청 완료 버튼을 회색 비활성 상태로 렌더링
 - 검증: `TestClient`로 공개 공고 목록을 조회해 신청 완료 상태가 시각적으로 구분되는 HTML을 확인
 
+### 2026-09-20: CSV 업로드 BOM 오류 해결 및 검증 로직 강화
+
+- 증상: Excel이 추가한 BOM 또는 누락된 헤더가 있는 CSV 업로드에서 컬럼 인식 실패와 파싱 오류가 발생함
+- 원인: `utf-8-sig` 처리와 필수 컬럼 누락 검증이 명시적으로 구현되지 않아 헤더 인식이 불안정했고, 오류 메시지가 모호했음
+- 수정: `src/routers/finance.py`에서 CSV를 `utf-8-sig`로 디코딩하고, 필수 컬럼 `transaction_date`, `transaction_type`, `amount`, `description`, `external_reference` 존재 여부를 엄격히 검사
+- 수정: 누락 시 `400` 상태와 `필수 컬럼이 누락되었습니다: ...` 메시지를 JSON으로 반환하도록 예외 메시지를 명확하게 변경
+- 수정: `templates/admin_dashboard.html`에서 CSV 업로드 안내 문구를 추가해 필수 헤더 형식을 사용자에게 표시
+- 검증: 올바른 BOM 포함 CSV와 누락된 컬럼 CSV를 직접 넣어 정상 처리와 오류 응답을 확인
+
 ### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
 
 - 증상: Bearer 헤더를 보낸 관리자 API 요청이 `422`로 응답

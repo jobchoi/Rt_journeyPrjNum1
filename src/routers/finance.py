@@ -54,11 +54,19 @@ async def import_transactions(
         raise HTTPException(status_code=415, detail="CSV 파일만 업로드할 수 있습니다.")
     content = await file.read()
     try:
-        reader = csv.DictReader(io.StringIO(content.decode("utf-8-sig")))
+        decoded = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         raise HTTPException(status_code=422, detail="UTF-8 CSV 파일만 지원합니다.") from None
-    if not reader.fieldnames or not REQUIRED_COLUMNS <= set(reader.fieldnames):
-        raise HTTPException(status_code=422, detail="필수 CSV 컬럼이 누락되었습니다.")
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    fieldnames = [name.strip() if name is not None else name for name in (reader.fieldnames or [])]
+    missing = [column for column in sorted(REQUIRED_COLUMNS) if column not in fieldnames]
+    if not fieldnames or missing:
+        missing_detail = ", ".join(missing)
+        raise HTTPException(
+            status_code=400,
+            detail=f"필수 컬럼이 누락되었습니다: {missing_detail}",
+        )
 
     transactions: list[FinanceTransaction] = []
     references: set[str] = set()
