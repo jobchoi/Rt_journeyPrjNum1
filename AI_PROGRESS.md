@@ -273,6 +273,14 @@ curl http://127.0.0.1:8001/docs
 - 실행 결과: 터미널에 각 계정의 이메일·비밀번호를 출력하고, 화면 이동 경로를 안내
 - 검증: 스크립트 실행 경로와 계정 생성 로직 확인
 
+### 2026-09-20: 공고 목록 신청 여부 직관성 개선
+
+- 증상: 일반 신청자가 `/announcements` 화면에서 자신이 이미 신청한 공고인지 직관적으로 구분할 수 없었음
+- 원인: 서버 렌더링 시 `Application` 기반 신청 여부를 템플릿에 전달하지 않아 카드 액션 상태가 표시되지 않음
+- 수정: `/announcements` 라우터에서 신청자 역할일 때 `Application.announcement_id` 목록을 조회해 `applied_announcement_ids`로 템플릿에 전달
+- 수정: `announcements_list.html`에서 `announcement.id in applied_announcement_ids` 조건을 사용해 신청 완료 버튼을 회색 비활성 상태로 렌더링
+- 검증: `TestClient`로 공개 공고 목록을 조회해 신청 완료 상태가 시각적으로 구분되는 HTML을 확인
+
 ### 2026-09-19: 신청 API 검증 중 쿠키 필수 오류
 
 - 증상: Bearer 헤더를 보낸 관리자 API 요청이 `422`로 응답

@@ -109,8 +109,23 @@ def announcements_list(
             .order_by(Announcement.application_end_at.asc(), Announcement.created_at.desc())
         )
     )
+    applied_announcement_ids = []
+    if "applicant" in {role.code for role in user.roles}:
+        applied_announcement_ids = list(
+            db.scalars(
+                select(Application.announcement_id)
+                .where(Application.applicant_id == user.id)
+                .distinct()
+            )
+        )
     context = base_context(user)
-    context.update({"request": request, "announcements": announcements})
+    context.update(
+        {
+            "request": request,
+            "announcements": announcements,
+            "applied_announcement_ids": applied_announcement_ids,
+        }
+    )
     return templates.TemplateResponse(request=request, name="announcements_list.html", context=context)
 
 
