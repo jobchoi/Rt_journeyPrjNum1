@@ -85,6 +85,8 @@ def record_payment(
         transaction_type="expense",
         amount=request.amount,
         description=f"장학금 지급: {selection.id}",
+        counterparty=db.get(User, selection.applicant_id).name,
+        category="scholarship",
         external_reference=request.external_reference,
         created_by=current_user.id,
     )

@@ -32,17 +32,19 @@
   <body class="min-h-screen font-sans antialiased">
     <div class="mesh min-h-screen">
       <header class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
-        <a href="/announcements" class="flex items-center gap-3" aria-label="Rt 장학사업 홈">
+        <a href="/" class="flex items-center gap-3" aria-label="Rt 장학사업 홈">
           <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink text-sm font-bold text-white shadow-soft">Rt</span>
           <span>
             <span class="block text-sm font-semibold tracking-tight text-ink">Remnant Trust</span>
-            <span class="block text-xs text-slate-500">Scholarship platform</span>
+            <span class="block text-xs text-slate-500">기금 관리</span>
           </span>
         </a>
-        <nav class="glass hidden items-center gap-1 rounded-full border border-white/80 p-1 shadow-sm sm:flex" aria-label="주요 메뉴">
-          <a href="/announcements" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-ink">공고 보기</a>
-          {% if is_admin %}
-          <a href="/admin/dashboard" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-ink">운영 대시보드</a>
+        <nav class="glass flex flex-wrap items-center gap-1 rounded-full border border-white/80 p-1 shadow-sm sm:flex" aria-label="주요 메뉴">
+          {% if finance_access %}
+          <a href="/finance" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-white">입출금 관리</a>
+          {% endif %}
+          {% if not finance_access %}
+          <a href="/announcements" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-white">공고 보기</a>
           {% endif %}
         </nav>
         <span class="hidden rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-xs font-medium text-slate-500 sm:inline-flex">{{ user.name if user else 'Rt community' }}</span>

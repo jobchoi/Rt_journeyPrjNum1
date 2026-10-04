@@ -423,11 +423,13 @@ class FinanceTransaction(Base):
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    transaction_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    transaction_date: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     transaction_type: Mapped[str] = mapped_column(String, nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False)
     external_reference: Mapped[str] = mapped_column(String, nullable=False)
+    counterparty: Mapped[str | None] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(50), nullable=False, default="general", server_default="general")
     source_filename: Mapped[str | None] = mapped_column(String)
     created_by: Mapped[str] = mapped_column(
         String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
