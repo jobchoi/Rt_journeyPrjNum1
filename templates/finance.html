@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}입출금 관리 · Rt{% endblock %}
+{% block content %}
+<style>
+  .field { width:100%; border:1px solid #cbd5e1; border-radius:.65rem; padding:.65rem; background:white; }
+  .panel { background:white; border:1px solid #e2e8f0; border-radius:1rem; padding:1.5rem; }
+  @media print { header, .no-print { display:none!important; } body,.mesh {background:white!important;} main {max-width:none!important;padding:0!important;} .panel {break-inside:avoid;} }
+</style>
+<div class="no-print mb-7"><h1 class="text-3xl font-semibold">입출금 관리</h1><p class="mt-2 text-slate-500">입금처, 출금 대상과 사용 내용을 기록하고 기간별 결산을 확인하세요.</p></div>
+<section class="panel no-print mb-6">
+  <h2 class="mb-4 text-lg font-semibold">거래 등록</h2>
+  <form id="transaction-form" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <label>거래일<input class="field mt-1" type="date" name="transaction_date" required></label>
+    <label>입출금<select class="field mt-1" name="transaction_type"><option value="income">입금</option><option value="expense">출금</option></select></label>
+    <label>금액 (원)<input class="field mt-1" name="amount" type="number" min="1" max="1000000000000" step="1" required></label>
+    <label><span id="party-label">입금처</span><input class="field mt-1" name="counterparty" maxlength="200" placeholder="교회, 은행, 단체 또는 이름" required></label>
+    <label>분류<select class="field mt-1" name="category">{% for code, label in categories.items() %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select></label>
+    <label>거래번호 (선택)<input class="field mt-1" name="external_reference" maxlength="200" placeholder="비우면 자동 생성"></label>
+    <label class="sm:col-span-2 lg:col-span-3">내용 / 출금 사유<input class="field mt-1" name="description" maxlength="1000" placeholder="예: 10월 장학금, 예금 이자, 회의 운영비" required></label>
+    <p class="text-sm text-slate-500 sm:col-span-2 lg:col-span-3">이월금은 처음 원장을 시작할 때만 등록하세요. 이후 기간의 기초 잔액은 자동 계산됩니다. 결손 이월은 출금으로 등록합니다.</p>
+    <button class="rounded-xl bg-ink px-5 py-3 text-white" type="submit">거래 저장</button>
+    <p id="transaction-message" class="sm:col-span-2 text-sm" role="status" aria-live="polite"></p>
+  </form>
+</section>
+<section class="panel no-print mb-6">
+  <h2 class="mb-4 text-lg font-semibold">조회 기간과 검색</h2>
+  <form method="get" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <label>시작일<input type="date" name="start" value="{{ query.get('start', '') }}" class="field mt-1"></label>
+    <label>종료일<input type="date" name="end" value="{{ query.get('end', '') }}" class="field mt-1"></label>
+    <label>입출금<select name="transaction_type" class="field mt-1"><option value="">전체</option><option value="income" {% if query.get('transaction_type') == 'income' %}selected{% endif %}>입금</option><option value="expense" {% if query.get('transaction_type') == 'expense' %}selected{% endif %}>출금</option></select></label>
+    <label>분류<select name="category" class="field mt-1"><option value="">전체</option>{% for code,label in categories.items() %}<option value="{{ code }}" {% if query.get('category') == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label>이름·입금처·내용<input name="q" value="{{ query.get('q', '') }}" maxlength="200" class="field mt-1"></label>
+    <div class="flex items-end gap-2"><button class="rounded-xl bg-ink px-4 py-3 text-white">조회</button><a href="/finance" class="p-3 text-sm">초기화</a></div>
+  </form>
+</section>
+<section class="panel mb-6" id="report">
+  <div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-xl font-semibold">거래내역 보고서 / 기간 결산</h2><p class="mt-2 text-sm text-slate-500">{{ report.start or '최초 기록' }} ~ {{ report.end or '전체' }} · {{ report.transaction_count }}건</p></div>
+    <div class="no-print flex gap-3 items-start"><a id="export-link" class="rounded-xl bg-blue-600 px-4 py-2 text-white">CSV 보고서</a><button onclick="window.print()" class="rounded-xl border px-4 py-2">인쇄 / PDF</button></div>
+  </div>
+  <p class="mt-3 text-sm text-slate-500">결산과 보고서는 조회 기간의 전체 거래 기준입니다. 입출금·분류·검색 조건은 아래 거래 목록에만 적용됩니다.</p>
+  <dl class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for key, label in [('opening_balance','기초 잔액'), ('carryover','기간 내 이월금'), ('total_income','입금 합계 (이월금 제외)'), ('interest','이자 (입금 합계에 포함)'), ('total_expense','출금 합계 (이월금 제외)'), ('closing_balance','기말 잔액')] %}
+    <div class="rounded-xl bg-slate-50 p-4"><dt class="text-sm text-slate-500">{{ label }}</dt><dd class="mt-2 text-2xl font-semibold">{{ '{:,}'.format(report[key]) }}<span class="ml-1 text-sm font-normal">원</span></dd></div>
+    {% endfor %}
+  </dl>
+  <p class="mt-4 text-sm text-slate-500">기말 잔액 = 기초 잔액 + 이월금 + 입금 − 출금. 결산 조회는 별도의 거래를 생성하지 않습니다.</p>
+  <div class="mt-6 grid gap-6 sm:grid-cols-2">
+    {% for key, title in [('recipients','해당 인원 / 출금 대상 : 출금 금액'),('sources','입금처 : 입금 금액')] %}
+    <div><h3 class="mb-3 font-semibold">{{ title }}</h3><ul class="space-y-2">{% for group in report[key] %}<li class="flex justify-between gap-3 border-b py-2"><span class="break-all">{{ group.name }}</span><span class="whitespace-nowrap">{{ '{:,}'.format(group.amount) }} 원</span></li>{% else %}<li class="text-sm text-slate-500">해당 기간 내역이 없습니다.</li>{% endfor %}</ul></div>
+    {% endfor %}
+  </div>
+</section>
+<section class="panel no-print mb-6">
+  <h2 class="mb-4 text-lg font-semibold">입출금 내역 <span class="text-sm font-normal text-slate-500">{{ ledger.total }}건</span></h2>
+  <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="border-b bg-slate-50"><tr>{% for heading in ['거래일','입출금','분류','이름 / 입금처','금액','내용 / 출금 사유'] %}<th class="whitespace-nowrap px-3 py-3">{{ heading }}</th>{% endfor %}</tr></thead><tbody>
+    {% for item in ledger['items'] %}<tr class="border-b"><td class="whitespace-nowrap p-3">{{ item.transaction_date.strftime('%Y-%m-%d') }}</td><td class="whitespace-nowrap p-3 {{ 'text-blue-700' if item.transaction_type == 'income' else 'text-red-700' }}">{{ '입금' if item.transaction_type == 'income' else '출금' }}</td><td class="whitespace-nowrap p-3">{{ categories.get(item.category, item.category) }}</td><td class="p-3 break-all">{{ item.counterparty or '기존 내역 (미기재)' }}</td><td class="p-3 whitespace-nowrap text-right">{{ '{:,}'.format(item.amount) }} 원</td><td class="p-3 break-all min-w-[180px]">{{ item.description }}</td></tr>
+    {% else %}<tr><td colspan="6" class="p-8 text-center text-slate-500">조회된 거래가 없습니다.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="mt-4 flex items-center justify-between text-sm"><span>{{ ledger.page }} 페이지 · 페이지당 {{ ledger.size }}건</span><div class="flex gap-4">{% if ledger.page > 1 %}<a href="{{ previous }}">이전</a>{% endif %}{% if ledger.page * ledger.size < ledger.total %}<a href="{{ following }}">다음</a>{% endif %}</div></div>
+</section>
+<details class="panel no-print"><summary class="cursor-pointer font-semibold">CSV로 거래 가져오기</summary><p class="mt-3 text-sm text-slate-500">UTF-8 CSV, 최대 5MB. 거래번호가 겹치면 전체 파일을 저장하지 않습니다. 기존 CSV 형식도 지원합니다.</p>
+<p class="mt-2 text-sm">기본 열: 거래일(transaction_date), 입출금(transaction_type: income/expense), 금액(amount), 내용(description), 거래번호(external_reference). 추가 열: 이름·입금처(counterparty), 분류(category).</p>
+<a href="/api/finance/template" class="mt-3 inline-block text-blue-700 underline">CSV 양식 다운로드</a>
+<form id="import-form" class="mt-4 flex flex-wrap gap-3"><input type="file" name="file" accept=".csv" required aria-label="거래 CSV"><button class="rounded-xl bg-ink px-4 py-2 text-white">가져오기</button><p id="import-message" role="status" aria-live="polite"></p></form></details>
+<script>
+  const transactionForm = document.getElementById('transaction-form');
+  transactionForm.elements.transaction_date.value = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Seoul'}).format(new Date());
+  transactionForm.elements.transaction_type.addEventListener('change', () => {
+    document.getElementById('party-label').textContent = transactionForm.elements.transaction_type.value === 'income' ? '입금처' : '출금 대상 이름';
+  });
+  const period = new URLSearchParams();
+  const search = new URLSearchParams(location.search);
+  for (const key of ['start', 'end']) if (search.get(key)) period.set(key, search.get(key));
+  document.getElementById('export-link').href = '/api/finance/reports/export?' + period;
+  document.querySelector('form[method="get"]').addEventListener('submit', event => {
+    event.preventDefault(); const params = new URLSearchParams();
+    for (const [key, value] of new FormData(event.target)) if (value.trim()) params.set(key, value.trim());
+    location.href = '/finance?' + params;
+  });
+  function errorText(payload) {
+    if (Array.isArray(payload.detail)) return payload.detail.map(item => item.msg).join(' / ');
+    return payload.detail || '요청에 실패했습니다.';
+  }
+  async function submit(form, endpoint, messageId, json) {
+    const button = form.querySelector('button'); const message = document.getElementById(messageId);
+    button.disabled = true; message.textContent = '저장 중…';
+    try {
+      let body = new FormData(form); const options = {method:'POST'};
+      if (json) {
+        body = Object.fromEntries(body); body.amount = Number(body.amount);
+        if (!body.external_reference.trim()) delete body.external_reference;
+        options.headers = {'Content-Type':'application/json'}; body = JSON.stringify(body);
+      }
+      options.body = body;
+      const response = await fetch(endpoint, options); const payload = await response.json();
+      if (!response.ok) throw new Error(errorText(payload));
+      message.textContent = '저장되었습니다.'; location.reload();
+    } catch (error) { message.textContent = error.message; button.disabled = false; }
+  }
+  transactionForm.addEventListener('submit', event => {event.preventDefault(); submit(transactionForm, '/api/finance/transactions', 'transaction-message', true);});
+  document.getElementById('import-form').addEventListener('submit', event => {event.preventDefault(); submit(event.target, '/api/finance/transactions/import', 'import-message', false);});
+</script>
+{% endblock %}

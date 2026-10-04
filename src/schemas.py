@@ -1,8 +1,8 @@
 """Pydantic request and response schemas for authentication."""
 
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class RegisterRequest(BaseModel):
@@ -148,6 +148,8 @@ class FinanceTransactionResponse(BaseModel):
     amount: int
     description: str
     external_reference: str
+    counterparty: str | None
+    category: str
     source_filename: str | None
     created_at: datetime
 
@@ -205,3 +207,23 @@ class DocumentResponse(BaseModel):
     content_type: str
     size_bytes: int
     created_at: datetime
+
+class FinanceTransactionCreate(BaseModel):
+    """Names are plain text: recording a payment never requires a scholarship account."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    transaction_date: date
+    transaction_type: str = Field(pattern="^(income|expense)$")
+    amount: int = Field(gt=0, le=1_000_000_000_000, strict=True)
+    counterparty: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=1000)
+    category: str = Field(default="general", pattern="^(general|donation|interest|carryover|scholarship|operating|other)$")
+    external_reference: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_direction(self):
+        if self.category in {"interest", "donation"} and self.transaction_type != "income":
+            raise ValueError("이자와 후원금은 입금으로 등록하세요.")
+        if self.category in {"scholarship", "operating"} and self.transaction_type != "expense":
+            raise ValueError("장학금과 운영비는 출금으로 등록하세요.")
+        return self

@@ -1,9 +1,11 @@
 """Server-rendered views for program operations and announcements."""
 
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -46,7 +48,8 @@ def register_page(request: Request):
 
 def base_context(user: User) -> dict[str, object]:
     role_codes = {role.code for role in user.roles}
-    return {"user": user, "is_admin": bool(role_codes & {"administrator", "program_manager"})}
+    return {"user": user, "is_admin": bool(role_codes & {"administrator", "program_manager"}),
+            "finance_access": bool(role_codes & {"administrator", "program_manager", "finance"})}
 
 
 @router.get("/admin/dashboard", name="admin_dashboard")
@@ -246,3 +249,32 @@ def admin_application_detail(
         }
     )
     return templates.TemplateResponse(request=request, name="admin_application_detail.html", context=context)
+
+FinanceManager = Annotated[User, Depends(require_roles("administrator", "program_manager", "finance"))]
+
+
+@router.get("/")
+def home(user: AuthenticatedUser):
+    roles = {role.code for role in user.roles}
+    destination = "/finance" if roles & {"administrator", "program_manager", "finance"} else "/announcements"
+    return RedirectResponse(destination, status_code=303)
+
+
+@router.get("/finance", name="finance_dashboard")
+def finance_dashboard(request: Request, user: FinanceManager,
+                      db: Annotated[Session, Depends(get_db)],
+                      start: date | None = None, end: date | None = None,
+                      transaction_type: str | None = Query(None, pattern="^(income|expense)$"),
+                      category: str | None = Query(None, pattern="^(general|donation|interest|carryover|scholarship|operating|other)$"),
+                      q: str | None = Query(None, max_length=200), page: int = Query(1, ge=1)):
+    from ..services.ledger import CATEGORY_LABELS, list_transactions, period_report
+    ledger = list_transactions(db, start=start, end=end, transaction_type=transaction_type,
+                               category=category, q=q, page=page)
+    query = dict(request.query_params)
+    previous = request.url.include_query_params(page=max(1, page - 1))
+    following = request.url.include_query_params(page=page + 1)
+    return templates.TemplateResponse(request=request, name="finance.html", context={
+        **base_context(user), "finance_access": True, "finance_mode": True,
+        "ledger": ledger, "report": period_report(db, start, end), "categories": CATEGORY_LABELS,
+        "query": query, "previous": previous, "following": following,
+    })

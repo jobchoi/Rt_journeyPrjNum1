@@ -1,98 +1,59 @@
-# 렘넌트 장학사업 전산화 프로젝트
+# Rt 통합기금 입출금 관리
 
-렘넌트 장학사업의 신청, 심사, 선발, 지급, 사후관리 업무를 표준화하고 전산화하기 위한 프로젝트입니다.
+입출금 원장과 거래 보고서를 중심으로 사용하는 간단한 기금 관리 시스템입니다.
 
-## 목표
+## 현재 핵심 기능
 
-- 장학사업 운영 업무를 하나의 시스템에서 관리
-- 신청자와 장학생의 정보 및 상태를 일관되게 관리
-- 심사 기준과 결과를 기록하여 업무의 추적성과 투명성 확보
-- 장학금 지급 및 사업 통계를 효율적으로 관리
+1. 입금·출금 수동 등록 및 기간·분류·이름·내용 검색
+2. 출금 대상 이름과 금액, 입금처 기록
+3. 출금 사유와 거래 내용 기록
+4. 이자·이월금 분류 및 기간 결산
+5. 거래내역 보고서, 대상별·입금처별 합계, CSV 다운로드, 인쇄/PDF
+6. 기존 CSV 가져오기 및 거래번호 중복 방지
 
-## 현재 단계
+관리자·사업 담당자·지급 담당자의 로그인 후 기본 화면은 `/finance`입니다.
+이름과 입금처는 직접 입력하며 신청서나 장학생 계정을 먼저 만들 필요가 없습니다.
 
-현재는 FastAPI 기반 MVP와 역할별 서버 렌더링 화면을 검증하는 단계입니다.
-
-## 주요 사용자
-
-- **신청자**: 장학금 신청, 서류 제출, 진행 상태 확인
-- **심사자**: 배정된 신청 건 검토, 평가 및 의견 작성
-- **사업 담당자**: 사업 및 공고 관리, 신청 검증, 심사 운영, 지급 관리
-- **관리자**: 사용자 권한, 기준정보, 시스템 운영 관리
-
-## 업무 범위
-
-1. 사용자 및 권한 관리
-2. 장학사업과 모집 공고 관리
-3. 장학금 신청 및 제출서류 관리
-4. 심사위원 배정과 심사 결과 관리
-5. 최종 선발 및 통지
-6. 장학금 지급 및 지급 이력 관리
-7. 장학생 사후관리와 통계
-
-## 디렉터리 구조
-
-```text
-.
-├── README.md
-├── REQUIREMENTS.md
-├── DATABASE.md
-├── API.md
-├── DEVELOPMENT.md
-├── TASKS.md
-├── AI_CONTEXT.md
-├── src/          # FastAPI 애플리케이션 코드
-├── templates/    # Jinja2 서버 렌더링 화면
-├── tests/        # pytest 회귀 테스트
-├── database/     # 스키마 및 버전 관리 마이그레이션
-├── docs/         # 추가 설계 문서
-└── scripts/      # 운영 및 개발 보조 스크립트 예정
-```
-
-## 문서 안내
-
-- [REQUIREMENTS.md](REQUIREMENTS.md): 기능 및 비기능 요구사항
-- [DATABASE.md](DATABASE.md): 핵심 데이터 모델과 무결성 규칙
-- [API.md](API.md): API 원칙과 주요 엔드포인트 초안
-- [DEVELOPMENT.md](DEVELOPMENT.md): 개발 및 협업 규칙
-- [TASKS.md](TASKS.md): 단계별 개발 작업 목록
-- [AI_CONTEXT.md](AI_CONTEXT.md): AI 코딩 도구용 프로젝트 맥락
-- [UI_UX_PLAN.md](UI_UX_PLAN.md): 사이트맵·권한·화면 명세
-
-## 운영 준비 명령
+## 실행
 
 ```bash
-alembic upgrade head
-pytest -q
+python -m pip install -r requirements.txt
+python scripts/upgrade_finance.py
+python scripts/create_superuser.py --email admin@example.com --name "기금 관리자"
+# JWT_SECRET_KEY를 로컬 환경에 지정한 뒤 실행
+python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-초기 스키마를 되돌릴 때는 다음 명령을 사용합니다.
+브라우저에서 `/login`에 접속합니다. 관리자 생성 명령은 비밀번호를 터미널에서 입력받습니다.
+기존 서버가 실행 중이면 새 코드를 적용하려면 재시작해야 합니다.
+`upgrade_finance.py`는 기존 SQLite DB를 `storage/backups/`에 백업한 뒤 migration을 적용합니다.
+새 DB와 Alembic 버전이 없는 초기 MVP DB도 처리하며, 알 수 없는 스키마는 중단합니다.
+다른 DB 파일에는 `--database /path/to/db`를 사용합니다. 운영 DBMS 변경은 별도 작업입니다.
+
+## 결산 기준
+
+- 금액은 원 단위 양의 정수입니다. 입출금 방향으로 증감을 표현합니다.
+- 최초 원장의 이전 잔액만 이월금으로 등록합니다. 결손 이월은 출금 방향입니다.
+- 다음 기간의 기초 잔액은 이전 거래 누계에서 자동 계산합니다. 같은 잔액을 다시 등록하지 않습니다.
+- 기말 잔액 = 기초 잔액 + 기간 내 이월금 + 입금 − 출금.
+- 이자는 입금 합계에 포함하며 별도 표시합니다. 이월금은 입금·출금 실적에서 분리합니다.
+- 결산은 조회 시 계산하는 보고서이며 확정·마감·잠금이나 새 거래 생성 기능은 아닙니다.
+
+## 구조와 확장
+
+FastAPI + SQLAlchemy + SQLite + Jinja2. `src/services/ledger.py`에 집계와 조회 규칙을 두고 API와 화면이 공유합니다.
+기존 장학사업 코드는 확장 기능으로 보존하고 기본 메뉴에서는 제외했습니다. 기존 API와 데이터는 유지됩니다.
+정정·취소·증빙·계좌별 원장·승인·결산 확정은 향후 확장 대상입니다.
+
+- [REQUIREMENTS.md](REQUIREMENTS.md): 현재 범위
+- [DATABASE.md](DATABASE.md): 원장 데이터
+- [API.md](API.md): 실제 API
+- [UI_UX_PLAN.md](UI_UX_PLAN.md): 기본 화면
+- [E2E_SCENARIO.md](E2E_SCENARIO.md): 검증 시나리오
+- [AI_PROGRESS.md](AI_PROGRESS.md): 진행 기록 및 인수인계
+- [DEVELOPMENT.md](DEVELOPMENT.md): 개발 규칙
+- `docs/archive/scholarship-mvp/`: 전환 전 문서 (현재 요구사항 기준이 아님)
 
 ```bash
-alembic downgrade base
+python -m pytest -q
 ```
-
-최초 관리자 생성:
-
-```bash
-python scripts/create_superuser.py --email admin@example.com --name "최고 관리자"
-```
-
-실행 후 터미널에서 비밀번호를 두 번 입력합니다. 일반 회원가입에서 관리자 역할을 열 필요가 없습니다.
-
-## 초기 스키마 검증
-
-현재 마이그레이션은 SQLite에서 먼저 검증할 수 있습니다.
-
-```bash
-python scripts/validate_initial_schema.py
-```
-
-이 검증은 인증·역할·사업·공고 테이블의 생성, 기본 역할 데이터, 그리고 심사 점수와 분리된 기도제목 테이블을 확인합니다.
-
-## 설계 원칙
-
-- 개인정보와 장학금 지급 정보는 최소 권한으로 보호한다.
-- 모든 주요 상태 변경은 누가, 언제, 무엇을 변경했는지 추적할 수 있어야 한다.
-- 업무 규칙은 문서화하고 테스트 가능한 형태로 구현한다.
-- 확정되지 않은 기술 선택은 구현 단계에서 팀 합의 후 결정한다.
