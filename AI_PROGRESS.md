@@ -2,7 +2,8 @@
 
 ## 현재 작업: 2026-10-04 입출금 중심 단순화
 
-- 작업 브랜치: feature/simple-finance (develop에서 Git Flow로 생성)
+- 현재 브랜치: develop
+- 보존된 기능 백업 브랜치: feature/simple-finance (Git Flow 생성 및 병합 완료)
 - 사용자 요청: 입출금, 이자·이월금·결산, 대상 이름과 출금액, 입금처, 거래 보고서, 출금 사유를 기본으로 단순화
 - 기존 장학 모델과 API·데이터는 보존하고 기본 메뉴와 관리자 로그인 이동은 /finance로 변경
 - 서비스: src/services/ledger.py, API: src/routers/finance.py, UI: templates/finance.html
@@ -25,7 +26,10 @@
 - `git diff --check` → 통과
 - 로컬 DB version 확인 → 0002_simple_finance, 원장 신규 컬럼 확인
 - 구현 백업 커밋: fc42a39 feat: simplify fund management around ledger and reports
-- 다음: 검증 기록 커밋 → git flow feature finish -k simple-finance → 병합 결과 기록
+- 검증 기록 백업 커밋: a8a69e4 docs: record finance verification and database upgrade
+- `git flow feature finish -k simple-finance` 성공: develop 병합 및 기능 브랜치 보존
+- 요청된 구현·검증·로컬 Git 백업 완료. 중단된 구현 작업 없음
+- 사용: 서버 재시작 후 /login → 재정 권한 계정 로그인 → /finance
 - 경고: Starlette BlockingPortal 및 Alembic path_separator 관련 의존성 deprecation 5개, 테스트 실패 없음
 - 실제 실행 중 서버의 재시작은 수행하지 않음. 새 코드 적용에는 서버 재시작 필요
 - 원격 push는 수행하지 않음. 코드 커밋과 Git Flow는 로컬 백업

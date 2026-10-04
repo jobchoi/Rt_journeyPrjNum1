@@ -16,7 +16,7 @@
 ## 검증 및 마무리
 
 - [x] 최종 회귀 테스트 8 passed, 문법 검사, diff 검사
-- [ ] Git Flow 단계별 커밋 및 develop 병합
+- [x] Git Flow 단계별 커밋 및 develop 병합, 기능 브랜치 보존
 
 ## 추후 확장 (이번 작업 범위 밖)
 
