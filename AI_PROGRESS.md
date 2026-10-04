@@ -20,8 +20,13 @@
 
 ## 검증 / 이어서 할 일
 
-- 초기 전체 테스트: 8 passed. 이후 CSV 공통 검증과 기존 지급 거래처 연결을 보완하여 최종 재검증 필요
-- 다음: 전체 pytest → compileall → git diff --check → 단계 커밋 → git flow feature finish -k simple-finance
+- 최종 전체 회귀 테스트: `/home/jobchoi/miniforge3/bin/python -m pytest -q` → 8 passed (8.51초)
+- `/home/jobchoi/miniforge3/bin/python -m compileall -q src scripts tests` → 통과
+- `git diff --check` → 통과
+- 로컬 DB version 확인 → 0002_simple_finance, 원장 신규 컬럼 확인
+- 구현 백업 커밋: fc42a39 feat: simplify fund management around ledger and reports
+- 다음: 검증 기록 커밋 → git flow feature finish -k simple-finance → 병합 결과 기록
+- 경고: Starlette BlockingPortal 및 Alembic path_separator 관련 의존성 deprecation 5개, 테스트 실패 없음
 - 실제 실행 중 서버의 재시작은 수행하지 않음. 새 코드 적용에는 서버 재시작 필요
 - 원격 push는 수행하지 않음. 코드 커밋과 Git Flow는 로컬 백업
 
