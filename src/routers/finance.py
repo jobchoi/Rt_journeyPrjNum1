@@ -12,11 +12,12 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from ..database import get_db
 from ..dependencies import require_roles
-from ..models import FinanceTransaction, User
-from ..schemas import FinanceOverviewResponse, FinanceTransactionResponse, FinanceTransactionCreate
+from ..models import FinanceTransaction, FinanceTransactionHistory, Payment, User
+from ..schemas import FinanceOverviewResponse, FinanceTransactionResponse, FinanceTransactionCreate, FinanceTransactionUpdate
 
 
 from ..services.ledger import CATEGORY_LABELS, filters, list_transactions, period_report
@@ -188,6 +189,71 @@ def transaction_list(_: FinanceManager, db: Annotated[Session, Depends(get_db)],
     return result
 
 
+def find_transaction(db, transaction_id):
+    transaction = db.get(FinanceTransaction, transaction_id)
+    if transaction is None:
+        raise HTTPException(404, "거래를 찾을 수 없습니다.")
+    return transaction
+
+
+def snapshot(transaction):
+    values = FinanceTransactionResponse.model_validate(transaction).model_dump(mode="json")
+    return {key: values[key] for key in (
+        "transaction_date", "transaction_type", "amount", "counterparty",
+        "category", "description", "external_reference", "version")}
+
+
+@router.get("/transactions/{transaction_id}", response_model=FinanceTransactionResponse)
+def transaction_detail(transaction_id: str, _: FinanceManager, db: Annotated[Session, Depends(get_db)]):
+    return find_transaction(db, transaction_id)
+
+
+@router.put("/transactions/{transaction_id}", response_model=FinanceTransactionResponse)
+def update_transaction(transaction_id: str, data: FinanceTransactionUpdate,
+                       current_user: FinanceManager, db: Annotated[Session, Depends(get_db)]):
+    transaction = find_transaction(db, transaction_id)
+    if transaction.version != data.expected_version:
+        raise HTTPException(409, "다른 수정이 반영되었습니다. 새로 조회한 뒤 수정하세요.")
+    if db.scalar(select(Payment.id).where(Payment.finance_transaction_id == transaction_id)):
+        raise HTTPException(409, "장학 지급과 연결된 거래는 지급 기록과 함께 정정해야 합니다.")
+    before = snapshot(transaction)
+    values = data.model_dump(exclude={"expected_version", "change_reason"})
+    values["transaction_date"] = datetime.combine(data.transaction_date, time.min)
+    values["external_reference"] = data.external_reference or transaction.external_reference
+    for key, value in values.items():
+        setattr(transaction, key, value)
+    after = snapshot(transaction)
+    if before == after:
+        return transaction
+    try:
+        db.flush()  # version_id_col rejects concurrent writes and increments the version.
+        db.add(FinanceTransactionHistory(
+            id=uuid4().hex, transaction_id=transaction.id, version=transaction.version,
+            changed_by=current_user.id, reason=data.change_reason,
+            before=before, after=snapshot(transaction),
+        ))
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        raise HTTPException(409, "다른 수정이 반영되었습니다. 새로 조회한 뒤 수정하세요.") from None
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "중복 거래번호 또는 동시 수정으로 저장할 수 없습니다.") from None
+    return transaction
+
+
+@router.get("/transactions/{transaction_id}/history")
+def transaction_history(transaction_id: str, _: FinanceManager, db: Annotated[Session, Depends(get_db)]):
+    transaction = find_transaction(db, transaction_id)
+    rows = db.scalars(select(FinanceTransactionHistory).where(
+        FinanceTransactionHistory.transaction_id == transaction_id
+    ).order_by(FinanceTransactionHistory.version.desc()))
+    return {"created_at": transaction.created_at, "created_by": transaction.created_by_user.name,
+            "items": [{"version": row.version, "changed_at": row.changed_at,
+                       "changed_by": row.changed_by_user.name, "reason": row.reason,
+                       "before": row.before, "after": row.after} for row in rows]}
+
+
 @router.get("/reports")
 def report(_: FinanceManager, db: Annotated[Session, Depends(get_db)],
            start: date | None = None, end: date | None = None):
@@ -217,7 +283,7 @@ def export_report(_: FinanceManager, db: Annotated[Session, Depends(get_db)],
         for group in summary[key]:
             writer.writerow([csv_cell(group["name"]), group["amount"]])
     writer.writerow([])
-    writer.writerow(["거래일", "입출금", "분류", "이름 / 입금처", "금액", "내용 / 출금 사유", "거래번호"])
+    writer.writerow(["거래일", "입출금", "분류", "이름 / 입금처", "금액", "내용 / 메모", "거래번호"])
     for item in db.scalars(select(FinanceTransaction).where(*filters(start, end)).order_by(
         FinanceTransaction.transaction_date, FinanceTransaction.created_at, FinanceTransaction.id
     )).yield_per(500):

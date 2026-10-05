@@ -12,3 +12,14 @@ venv/
 .vscode/
 server.log
 server.pid
+# Local ledgers, exports and personal document artifacts
+*.sqlite
+*.sqlite3
+*.db-*
+*.csv
+*.xlsx
+*.xls
+*.pdf
+*.log
+imports/
+exports/

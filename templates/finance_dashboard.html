@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>기금 현황 · Rt</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#172033;font-family:system-ui,sans-serif}main{max-width:1440px;margin:auto;padding:36px}h1{font-size:36px;margin:0}h2{font-size:24px}p{line-height:1.6}.muted{color:#526174}.toolbar,.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.toolbar{justify-content:space-between;margin-bottom:28px}input,button,a.button{font:inherit;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;background:white;color:#172033;text-decoration:none}button,a.button{cursor:pointer}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.card,.panel{background:white;padding:24px;border:1px solid #dce3ed;border-radius:18px}.value{font-size:clamp(24px,2.6vw,40px);font-weight:700;overflow-wrap:anywhere}.label{color:#526174}.charts{display:grid;grid-template-columns:3fr 2fr;gap:20px;margin-top:24px}.row{margin:20px 0}.bar{height:30px;min-width:2px;border-radius:6px;background:#2563eb}.expense{background:#e16b35}.barline{display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:12px;align-items:center;margin:7px 0}.amount{text-align:right;font-variant-numeric:tabular-nums}.legend{display:flex;gap:18px}.dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;background:#2563eb}.dot.expense{background:#e16b35}.presentation .no-present{display:none}.presentation main{max-width:none;padding:48px}.presentation .value{font-size:42px}.presentation h1{font-size:44px}body:fullscreen{overflow:auto}.note{margin-top:24px;padding:18px;border-left:4px solid #2563eb;background:#f8fafc}@media(max-width:850px){main{padding:20px}.cards{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}@media print{.no-print{display:none!important}body{background:white}main{padding:0;max-width:none}.card,.panel{break-inside:avoid}.charts{grid-template-columns:1fr 1fr}.cards{grid-template-columns:repeat(4,1fr)}@page{size:A4 landscape;margin:12mm}
+</style></head><body><main>
+{% set report = dashboard.summary %}
+<div class="toolbar"><div><p class="muted">REMNANT TRUST · 기금 관리</p><h1>기금 운영 현황</h1><p class="muted">{{ report.start or '최초 기록' }} ~ {{ report.end or '전체' }} · {{ '{:,}'.format(report.transaction_count) }}건</p></div>
+<div class="actions no-print no-present"><a class="button" href="/finance">원장으로</a><button type="button" id="present">발표 모드</button><button type="button" onclick="window.print()">인쇄 / PDF</button></div></div>
+<form class="actions no-print no-present" method="get"><label>시작일 <input type="date" name="start" value="{{ report.start or '' }}"></label><label>종료일 <input type="date" name="end" value="{{ report.end or '' }}"></label><button>기간 적용</button><a class="button" href="/finance/dashboard">전체 기간</a></form>
+<p class="muted">개인 이름·입금처·메모를 제외한 집계 화면입니다. 발표 모드는 Esc로 종료합니다.</p>
+<section class="cards" aria-label="기간 핵심 지표">
+{% for key,label in [('opening_balance','기초 잔액'),('total_income','기간 입금'),('total_expense','기간 출금'),('closing_balance','기말 잔액')] %}
+<div class="card"><p class="label">{{ label }}</p><div class="value">{{ '{:,}'.format(report[key]) }} <small>원</small></div></div>{% endfor %}
+</section>
+<section class="charts">
+<div class="panel"><h2>월별 입출금 비교</h2><p class="legend"><span><i class="dot"></i>입금</span><span><i class="dot expense"></i>출금</span></p><p class="muted">같은 눈금으로 비교하며 이월금은 제외합니다. 거래가 있는 월만 표시합니다.</p>
+{% for row in dashboard.monthly %}<div class="row"><strong>{{ row.month }}</strong>
+{% for direction,label in [('income','입금'),('expense','출금')] %}<div class="barline" aria-label="{{ row.month }} {{ label }} {{ '{:,}'.format(row[direction]) }}원"><div><div class="bar {{ 'expense' if direction == 'expense' else '' }}" style="width:{{ row[direction] * 100 / dashboard.monthly_max }}%;{{ 'min-width:0' if row[direction] == 0 else '' }}"></div></div><span class="amount">{{ '{:,}'.format(row[direction]) }} 원</span></div>{% endfor %}</div>
+{% else %}<p class="muted">해당 기간 입출금 내역이 없습니다.</p>{% endfor %}</div>
+<div class="panel"><h2>출금 분류별 구성</h2><p class="muted">이월금을 제외한 사용 금액과 출금 비중입니다.</p>
+{% for row in dashboard.categories %}<div class="row"><strong>{{ row.label }}</strong><span class="muted"> · {{ '%.1f'|format(row.amount * 100 / report.total_expense) }}%</span><div class="barline"><div><div class="bar expense" style="width:{{ row.amount * 100 / dashboard.category_max }}%"></div></div><span class="amount">{{ '{:,}'.format(row.amount) }} 원</span></div></div>{% else %}<p class="muted">해당 기간 출금 내역이 없습니다.</p>{% endfor %}
+<div class="note">기간 내 이월금: <strong>{{ '{:,}'.format(report.carryover) }} 원</strong><br>이자: <strong>{{ '{:,}'.format(report.interest) }} 원</strong> (입금에 포함)<br>기말 잔액 = 기초 잔액 + 이월금 + 입금 − 출금</div></div>
+</section></main><script>
+const exitPresentation = () => document.body.classList.remove('presentation');
+document.getElementById('present').addEventListener('click', async () => {document.body.classList.add('presentation');try{await document.body.requestFullscreen();}catch(error){/* Esc also exits when fullscreen is unavailable. */}});
+document.addEventListener('fullscreenchange', () => {if(!document.fullscreenElement) exitPresentation();});
+document.addEventListener('keydown', event => {if(event.key === 'Escape') exitPresentation();});
+</script></body></html>

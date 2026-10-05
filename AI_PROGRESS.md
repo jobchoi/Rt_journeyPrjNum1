@@ -63,3 +63,16 @@
 - 수정: `.venv` → `venv` → PATH Python 자동 선택, VENV_DIR 명시 지원, `python -m uvicorn` 실행. 프로젝트 루트 고정, 시작 완료/실패 확인, PID 유효성 및 프로세스 확인, 종료 대기 추가. README 실행 안내 및 런타임 파일 gitignore 반영.
 - 검증: bash 문법 및 git diff --check 통과. 없는 VENV_DIR에서 실패 반환 확인. 8000 포트 충돌 시 로그 출력/실패 반환 확인. 호스트에서 기존 서버 PID 복원 후 restart/status 성공, `/health` → `{"status":"ok"}`. 전체 pytest 8 passed (기존 deprecation 경고 5개).
 - 환경: 격리 환경에서는 호스트 PID/소켓에 접근할 수 없어 실제 서버 검증과 pytest는 호스트 실행으로 완료.
+
+## 원장 수정·이력·발표 대시보드 (2026-10-05)
+
+- 요청: 공통 사유/메모, 금액 쉼표, DB 저장 확인, 잘못된 거래 수정, 변경 이력, 자체 발표 도표, 자동 커밋/푸시와 민감 자료 제외.
+- 구현: 입출금 공통 `내용 / 메모`; 금액 입력/표시 천 단위 쉼표와 정수 범위 검증. DB에는 원 단위 정수로 저장.
+- 구현: 거래 상세·PUT 수정·이력 API와 원장 수정/이력 버튼. 수정 사유 필수, before/after JSON·수정자·UTC 시각 보존, 화면은 한국 시각. 수정과 이력 원자적 저장, version 기반 동시 수정 충돌 차단. 장학 지급 연계 거래는 별도 정정이 필요하므로 수정 차단.
+- 구현: `/finance/dashboard` 기간별 핵심 지표, 월별 입출금, 출금 분류별 도표, 발표 전체화면(Esc 종료), 인쇄/PDF. GAS/CDN 없는 자체 도표, 개인 이름·거래처·메모 제외. 거래 없는 월은 생략.
+- 개인정보: DB/SQLite 부속 파일·CSV·Excel·PDF·로그·imports/exports 등 로컬 자료 gitignore. 기존 추적 자료에는 운영 DB/개인 자료 없음.
+- DB 적용: SQLite backup 후 0003_finance_history 적용. 기존 원장 2건 유지 확인. 백업은 storage/backups에 보관(Git 제외).
+- 검증: 전체 pytest 11 passed, 기존 의존성 경고 5개. 수정/이력 권한·금액·사유 검증, 영속 저장·중복 번호 롤백·버전 충돌·변경 없는 저장, 별도 세션 동시 수정 충돌, 집계 및 발표 개인정보 제외, 기존 데이터 보존 migration 검증 통과.
+- 검증: compileall 및 bash -n, git diff --check 통과. 실제 관리자 로그인 후 /finance, /finance/dashboard, /api/finance/transactions HTTP 200, version 필드와 기존 건수 확인. 브라우저 직접 조작 검증은 수행하지 않음.
+- 추가 수정: 실행 세션 종료 후 서버 프로세스가 사라지는 현상 확인. manage.sh에서 Linux/WSL setsid로 터미널 프로세스 그룹 분리 후 별도 호출에서도 서버 실행 상태 및 HTTP 응답 유지 확인.
+- 한계: 이력 도입 전 수정은 소급 기록되지 않음. 직접 SQL 변경은 앱 이력 우회. 취소/삭제, 지급 연계 정정, 외부 GAS 동기화는 미구현.

@@ -2,7 +2,7 @@
 from datetime import date, datetime, time, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, extract, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..models import FinanceTransaction as Transaction
@@ -69,3 +69,23 @@ def period_report(db: Session, start=None, end=None):
             "carryover": int(carryover), "total_income": int(income), "total_expense": int(expense),
             "interest": int(interest), "closing_balance": opening + int(carryover) + int(income) - int(expense),
             "transaction_count": count, "recipients": grouped("expense"), "sources": grouped("income")}
+
+
+def dashboard_report(db: Session, start=None, end=None):
+    summary = period_report(db, start, end)
+    conditions = filters(start, end)
+    year, month = extract("year", Transaction.transaction_date), extract("month", Transaction.transaction_date)
+    rows = db.execute(select(year, month, Transaction.transaction_type, func.sum(Transaction.amount)).where(
+        *conditions, Transaction.category != "carryover"
+    ).group_by(year, month, Transaction.transaction_type).order_by(year, month)).all()
+    monthly = {}
+    for y, m, direction, amount in rows:
+        key = f"{int(y):04d}-{int(m):02d}"
+        monthly.setdefault(key, {"month": key, "income": 0, "expense": 0})[direction] = int(amount)
+    categories = db.execute(select(Transaction.category, func.sum(Transaction.amount)).where(
+        *conditions, Transaction.transaction_type == "expense", Transaction.category != "carryover"
+    ).group_by(Transaction.category).order_by(func.sum(Transaction.amount).desc())).all()
+    return {"summary": summary, "monthly": list(monthly.values()),
+            "monthly_max": max((max(row["income"], row["expense"]) for row in monthly.values()), default=1) or 1,
+            "categories": [{"label": CATEGORY_LABELS.get(code, code), "amount": int(amount)} for code, amount in categories],
+            "category_max": max((int(amount) for _, amount in categories), default=1) or 1}

@@ -8,17 +8,18 @@
 </style>
 <div class="no-print mb-7"><h1 class="text-3xl font-semibold">입출금 관리</h1><p class="mt-2 text-slate-500">입금처, 출금 대상과 사용 내용을 기록하고 기간별 결산을 확인하세요.</p></div>
 <section class="panel no-print mb-6">
-  <h2 class="mb-4 text-lg font-semibold">거래 등록</h2>
+  <h2 class="mb-4 text-lg font-semibold">거래 등록 / 수정</h2>
   <form id="transaction-form" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <label>거래일<input class="field mt-1" type="date" name="transaction_date" required></label>
     <label>입출금<select class="field mt-1" name="transaction_type"><option value="income">입금</option><option value="expense">출금</option></select></label>
-    <label>금액 (원)<input class="field mt-1" name="amount" type="number" min="1" max="1000000000000" step="1" required></label>
+    <label>금액 (원)<input class="field mt-1" name="amount" type="text" inputmode="numeric" pattern="[0-9,]+" placeholder="예: 100,000" required></label>
     <label><span id="party-label">입금처</span><input class="field mt-1" name="counterparty" maxlength="200" placeholder="교회, 은행, 단체 또는 이름" required></label>
     <label>분류<select class="field mt-1" name="category">{% for code, label in categories.items() %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select></label>
     <label>거래번호 (선택)<input class="field mt-1" name="external_reference" maxlength="200" placeholder="비우면 자동 생성"></label>
-    <label class="sm:col-span-2 lg:col-span-3">내용 / 출금 사유<input class="field mt-1" name="description" maxlength="1000" placeholder="예: 10월 장학금, 예금 이자, 회의 운영비" required></label>
+    <label class="sm:col-span-2 lg:col-span-3">내용 / 메모<input class="field mt-1" name="description" maxlength="1000" placeholder="예: 10월 장학금, 예금 이자, 회의 운영비" required></label>
     <p class="text-sm text-slate-500 sm:col-span-2 lg:col-span-3">이월금은 처음 원장을 시작할 때만 등록하세요. 이후 기간의 기초 잔액은 자동 계산됩니다. 결손 이월은 출금으로 등록합니다.</p>
-    <button class="rounded-xl bg-ink px-5 py-3 text-white" type="submit">거래 저장</button>
+    <label id="change-reason-field" hidden class="sm:col-span-2 lg:col-span-3">수정 사유<input class="field mt-1" name="change_reason" maxlength="1000" placeholder="예: 금액 오입력 정정" disabled></label>
+    <div class="flex gap-3"><button id="save-transaction" class="rounded-xl bg-ink px-5 py-3 text-white" type="submit">거래 저장</button><button id="cancel-edit" type="button" hidden class="rounded-xl border px-4">수정 취소</button></div>
     <p id="transaction-message" class="sm:col-span-2 text-sm" role="status" aria-live="polite"></p>
   </form>
 </section>
@@ -35,7 +36,7 @@
 </section>
 <section class="panel mb-6" id="report">
   <div class="flex flex-wrap justify-between gap-3"><div><h2 class="text-xl font-semibold">거래내역 보고서 / 기간 결산</h2><p class="mt-2 text-sm text-slate-500">{{ report.start or '최초 기록' }} ~ {{ report.end or '전체' }} · {{ report.transaction_count }}건</p></div>
-    <div class="no-print flex gap-3 items-start"><a id="export-link" class="rounded-xl bg-blue-600 px-4 py-2 text-white">CSV 보고서</a><button onclick="window.print()" class="rounded-xl border px-4 py-2">인쇄 / PDF</button></div>
+    <div class="no-print flex gap-3 items-start"><a id="dashboard-link" class="rounded-xl bg-ink px-4 py-2 text-white">발표 대시보드</a><a id="export-link" class="rounded-xl bg-blue-600 px-4 py-2 text-white">CSV 보고서</a><button onclick="window.print()" class="rounded-xl border px-4 py-2">인쇄 / PDF</button></div>
   </div>
   <p class="mt-3 text-sm text-slate-500">결산과 보고서는 조회 기간의 전체 거래 기준입니다. 입출금·분류·검색 조건은 아래 거래 목록에만 적용됩니다.</p>
   <dl class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -52,9 +53,9 @@
 </section>
 <section class="panel no-print mb-6">
   <h2 class="mb-4 text-lg font-semibold">입출금 내역 <span class="text-sm font-normal text-slate-500">{{ ledger.total }}건</span></h2>
-  <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="border-b bg-slate-50"><tr>{% for heading in ['거래일','입출금','분류','이름 / 입금처','금액','내용 / 출금 사유'] %}<th class="whitespace-nowrap px-3 py-3">{{ heading }}</th>{% endfor %}</tr></thead><tbody>
-    {% for item in ledger['items'] %}<tr class="border-b"><td class="whitespace-nowrap p-3">{{ item.transaction_date.strftime('%Y-%m-%d') }}</td><td class="whitespace-nowrap p-3 {{ 'text-blue-700' if item.transaction_type == 'income' else 'text-red-700' }}">{{ '입금' if item.transaction_type == 'income' else '출금' }}</td><td class="whitespace-nowrap p-3">{{ categories.get(item.category, item.category) }}</td><td class="p-3 break-all">{{ item.counterparty or '기존 내역 (미기재)' }}</td><td class="p-3 whitespace-nowrap text-right">{{ '{:,}'.format(item.amount) }} 원</td><td class="p-3 break-all min-w-[180px]">{{ item.description }}</td></tr>
-    {% else %}<tr><td colspan="6" class="p-8 text-center text-slate-500">조회된 거래가 없습니다.</td></tr>{% endfor %}
+  <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="border-b bg-slate-50"><tr>{% for heading in ['거래일','입출금','분류','이름 / 입금처','금액','내용 / 메모','관리'] %}<th class="whitespace-nowrap px-3 py-3">{{ heading }}</th>{% endfor %}</tr></thead><tbody>
+    {% for item in ledger['items'] %}<tr class="border-b"><td class="whitespace-nowrap p-3">{{ item.transaction_date.strftime('%Y-%m-%d') }}</td><td class="whitespace-nowrap p-3 {{ 'text-blue-700' if item.transaction_type == 'income' else 'text-red-700' }}">{{ '입금' if item.transaction_type == 'income' else '출금' }}</td><td class="whitespace-nowrap p-3">{{ categories.get(item.category, item.category) }}</td><td class="p-3 break-all">{{ item.counterparty or '기존 내역 (미기재)' }}</td><td class="p-3 whitespace-nowrap text-right">{{ '{:,}'.format(item.amount) }} 원</td><td class="p-3 break-all min-w-[180px]">{{ item.description }}</td><td class="whitespace-nowrap p-3"><button type="button" data-edit="{{ item.id }}" class="text-blue-700 underline">수정</button> · <button type="button" data-history="{{ item.id }}" class="text-blue-700 underline">이력</button></td></tr>
+    {% else %}<tr><td colspan="7" class="p-8 text-center text-slate-500">조회된 거래가 없습니다.</td></tr>{% endfor %}
   </tbody></table></div>
   <div class="mt-4 flex items-center justify-between text-sm"><span>{{ ledger.page }} 페이지 · 페이지당 {{ ledger.size }}건</span><div class="flex gap-4">{% if ledger.page > 1 %}<a href="{{ previous }}">이전</a>{% endif %}{% if ledger.page * ledger.size < ledger.total %}<a href="{{ following }}">다음</a>{% endif %}</div></div>
 </section>
@@ -62,15 +63,34 @@
 <p class="mt-2 text-sm">기본 열: 거래일(transaction_date), 입출금(transaction_type: income/expense), 금액(amount), 내용(description), 거래번호(external_reference). 추가 열: 이름·입금처(counterparty), 분류(category).</p>
 <a href="/api/finance/template" class="mt-3 inline-block text-blue-700 underline">CSV 양식 다운로드</a>
 <form id="import-form" class="mt-4 flex flex-wrap gap-3"><input type="file" name="file" accept=".csv" required aria-label="거래 CSV"><button class="rounded-xl bg-ink px-4 py-2 text-white">가져오기</button><p id="import-message" role="status" aria-live="polite"></p></form></details>
+<dialog id="history-dialog" class="rounded-2xl p-6 w-[min(900px,95vw)] max-h-[85vh] overflow-auto"><div class="flex justify-between"><h2 class="text-xl font-semibold">거래 변경 이력</h2><button type="button" onclick="this.closest('dialog').close()">닫기</button></div><div id="history-content" class="mt-4"></div></dialog>
 <script>
   const transactionForm = document.getElementById('transaction-form');
   transactionForm.elements.transaction_date.value = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Seoul'}).format(new Date());
   transactionForm.elements.transaction_type.addEventListener('change', () => {
     document.getElementById('party-label').textContent = transactionForm.elements.transaction_type.value === 'income' ? '입금처' : '출금 대상 이름';
   });
+  let editingId = null, expectedVersion = null;
+  const amountInput = transactionForm.elements.amount;
+  amountInput.addEventListener('input', () => {
+    amountInput.setCustomValidity(/^[0-9,]*$/.test(amountInput.value) ? '' : '금액은 숫자와 쉼표만 입력하세요.');
+    if (!/^[0-9,]*$/.test(amountInput.value)) return;
+    const caret = amountInput.selectionStart;
+    const digitsBefore = amountInput.value.slice(0, caret).replace(/[^0-9]/g, '').length;
+    const digits = amountInput.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+    amountInput.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    let position = 0, count = 0;
+    while (position < amountInput.value.length && count < digitsBefore) {
+      if (/\d/.test(amountInput.value[position])) count++;
+      position++;
+    }
+    amountInput.setSelectionRange(position, position);
+  });
+  document.getElementById('cancel-edit').addEventListener('click', () => location.reload());
   const period = new URLSearchParams();
   const search = new URLSearchParams(location.search);
   for (const key of ['start', 'end']) if (search.get(key)) period.set(key, search.get(key));
+  document.getElementById('dashboard-link').href = '/finance/dashboard?' + period;
   document.getElementById('export-link').href = '/api/finance/reports/export?' + period;
   document.querySelector('form[method="get"]').addEventListener('submit', event => {
     event.preventDefault(); const params = new URLSearchParams();
@@ -85,9 +105,11 @@
     const button = form.querySelector('button'); const message = document.getElementById(messageId);
     button.disabled = true; message.textContent = '저장 중…';
     try {
-      let body = new FormData(form); const options = {method:'POST'};
+      let body = new FormData(form); const options = {method: json && editingId ? 'PUT' : 'POST'};
       if (json) {
-        body = Object.fromEntries(body); body.amount = Number(body.amount);
+        body = Object.fromEntries(body); body.amount = Number(body.amount.replace(/,/g, ''));
+        if (!Number.isSafeInteger(body.amount) || body.amount <= 0 || body.amount > 1000000000000) throw new Error('금액은 1~1,000,000,000,000원의 정수로 입력하세요.');
+        if (editingId) body.expected_version = expectedVersion;
         if (!body.external_reference.trim()) delete body.external_reference;
         options.headers = {'Content-Type':'application/json'}; body = JSON.stringify(body);
       }
@@ -97,7 +119,59 @@
       message.textContent = '저장되었습니다.'; location.reload();
     } catch (error) { message.textContent = error.message; button.disabled = false; }
   }
-  transactionForm.addEventListener('submit', event => {event.preventDefault(); submit(transactionForm, '/api/finance/transactions', 'transaction-message', true);});
+  transactionForm.addEventListener('submit', event => {event.preventDefault(); submit(transactionForm, '/api/finance/transactions' + (editingId ? '/' + editingId : ''), 'transaction-message', true);});
+  document.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', async () => {
+    const message = document.getElementById('transaction-message');
+    try {
+      const response = await fetch('/api/finance/transactions/' + button.dataset.edit);
+      const item = await response.json();
+      if (!response.ok) throw new Error(errorText(item));
+      editingId = item.id; expectedVersion = item.version;
+      for (const key of ['transaction_type', 'counterparty', 'category', 'description', 'external_reference']) transactionForm.elements[key].value = item[key] || '';
+      transactionForm.elements.transaction_date.value = item.transaction_date.slice(0, 10);
+      amountInput.value = item.amount.toLocaleString('ko-KR');
+      transactionForm.elements.transaction_type.dispatchEvent(new Event('change'));
+      document.getElementById('change-reason-field').hidden = false;
+      transactionForm.elements.change_reason.disabled = false;
+      transactionForm.elements.change_reason.required = true;
+      transactionForm.elements.change_reason.value = '';
+      document.getElementById('cancel-edit').hidden = false;
+      document.getElementById('save-transaction').textContent = '수정 저장';
+      message.textContent = '수정 중 · 버전 ' + expectedVersion;
+      transactionForm.scrollIntoView({behavior:'smooth', block:'center'});
+    } catch (error) { message.textContent = error.message; }
+  }));
+  const fieldLabels = {transaction_date:'거래일', transaction_type:'입출금', amount:'금액', counterparty:'이름 / 입금처', category:'분류', description:'내용 / 메모', external_reference:'거래번호'};
+  const categoryLabels = {{ categories | tojson }};
+  function displayValue(key, value) {
+    if (key === 'amount') return Number(value).toLocaleString('ko-KR') + ' 원';
+    if (key === 'transaction_type') return value === 'income' ? '입금' : '출금';
+    if (key === 'category') return categoryLabels[value] || value;
+    if (key === 'transaction_date') return value.slice(0, 10);
+    return value || '미기재';
+  }
+  function addText(parent, tag, text) {
+    const element = document.createElement(tag); element.textContent = text; parent.append(element); return element;
+  }
+  document.querySelectorAll('[data-history]').forEach(button => button.addEventListener('click', async () => {
+    const dialog = document.getElementById('history-dialog'), content = document.getElementById('history-content');
+    content.replaceChildren(); dialog.showModal(); addText(content, 'p', '조회 중…');
+    try {
+      const response = await fetch('/api/finance/transactions/' + button.dataset.history + '/history');
+      const data = await response.json();
+      if (!response.ok) throw new Error(errorText(data));
+      content.replaceChildren();
+      const stamp = value => new Date(value + (value.endsWith('Z') ? '' : 'Z')).toLocaleString('ko-KR', {timeZone:'Asia/Seoul'});
+      addText(content, 'p', '최초 등록: ' + data.created_by + ' · ' + stamp(data.created_at));
+      if (!data.items.length) addText(content, 'p', '저장된 수정 이력이 없습니다. 이력 기능 도입 전 수정은 소급 기록되지 않습니다.');
+      for (const item of data.items) {
+        const section = document.createElement('section'); section.className = 'mt-4 border-t pt-4'; content.append(section);
+        addText(section, 'h3', '버전 ' + item.version + ' · ' + item.changed_by + ' · ' + stamp(item.changed_at));
+        addText(section, 'p', '수정 사유: ' + item.reason);
+        for (const [key, label] of Object.entries(fieldLabels)) if (item.before[key] !== item.after[key]) addText(section, 'p', label + ': ' + displayValue(key, item.before[key]) + ' → ' + displayValue(key, item.after[key]));
+      }
+    } catch (error) {content.replaceChildren(); addText(content, 'p', error.message);}
+  }));
   document.getElementById('import-form').addEventListener('submit', event => {event.preventDefault(); submit(event.target, '/api/finance/transactions/import', 'import-message', false);});
 </script>
 {% endblock %}

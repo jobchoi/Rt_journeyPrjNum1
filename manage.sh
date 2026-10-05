@@ -49,7 +49,12 @@ start() {
     resolve_python || return 1
     rm -f -- "$PID_FILE"
     echo "서버를 시작합니다 (Python: $PYTHON)..."
-    nohup "$PYTHON" -m uvicorn src.main:app --host "$HOST" --port "$PORT" > "$LOG_FILE" 2>&1 < /dev/null &
+    # WSL/Linux에서는 실행 터미널의 프로세스 그룹에서도 분리합니다.
+    local launcher=()
+    if command -v setsid >/dev/null 2>&1; then
+        launcher=(setsid)
+    fi
+    nohup "${launcher[@]}" "$PYTHON" -m uvicorn src.main:app --host "$HOST" --port "$PORT" > "$LOG_FILE" 2>&1 < /dev/null &
     PID=$!
     echo "$PID" > "$PID_FILE"
     for ((attempt=0; attempt<30; attempt++)); do

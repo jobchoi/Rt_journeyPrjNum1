@@ -98,3 +98,87 @@ def test_upgrade_preserves_unversioned_data(tmp_path, monkeypatch):
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT amount FROM finance_transactions WHERE id='t'").fetchone()[0] == 100
     command.upgrade(config, "head")
+
+
+def test_corrections_are_persisted_audited_and_conflict_checked(client):
+    from sqlalchemy import select
+    from src.database import SessionLocal
+    from src.models import FinanceTransaction, FinanceTransactionHistory
+    auth = headers(client)
+    applicant = headers(client, "applicant")
+    body = {"transaction_date": "2045-02-01", "transaction_type": "income", "amount": 1234567,
+            "counterparty": "수정검증", "category": "general", "description": "입금 메모"}
+    original = client.post("/api/finance/transactions", headers=auth, json=body).json()
+    route = '/api/finance/transactions/' + original['id']
+    update = dict(body, amount=2345678, description="입금 금액 정정", expected_version=1, change_reason="영수증 대조")
+    assert client.put(route, headers=applicant, json=update).status_code == 403
+    assert client.get(route + '/history', headers=applicant).status_code == 403
+    assert client.put(route, json=update).status_code == 401
+    assert client.put(route, headers=auth, json=dict(update, change_reason=" ")).status_code == 422
+    assert client.put(route, headers=auth, json=dict(update, amount=1.1)).status_code == 422
+    result = client.put(route, headers=auth, json=update)
+    assert result.status_code == 200, result.text
+    assert result.json()['version'] == 2
+    assert result.json()['external_reference'] == original['external_reference']
+    assert client.put(route, headers=auth, json=update).status_code == 409
+    history = client.get(route + '/history', headers=auth).json()['items']
+    assert len(history) == 1 and history[0]['reason'] == '영수증 대조'
+    assert history[0]['before']['amount'] == 1234567 and history[0]['after']['amount'] == 2345678
+    assert history[0]['changed_by'] == '원장 테스트'
+    assert client.put(route, headers=auth, json=dict(update, expected_version=2)).status_code == 200
+    assert len(client.get(route + '/history', headers=auth).json()['items']) == 1
+    with SessionLocal() as db:
+        assert db.get(FinanceTransaction, original['id']).amount == 2345678
+        assert db.scalar(select(FinanceTransactionHistory).where(FinanceTransactionHistory.transaction_id == original['id'])).after['version'] == 2
+    duplicate = client.post('/api/finance/transactions', headers=auth, json=dict(body, external_reference=uuid4().hex)).json()
+    assert client.put(route, headers=auth, json=dict(update, expected_version=2, amount=42, external_reference=duplicate['external_reference'])).status_code == 409
+    assert client.get(route, headers=auth).json()['amount'] == 2345678
+    assert len(client.get(route + '/history', headers=auth).json()['items']) == 1
+    assert client.get('/api/finance/transactions/nonexistent/history', headers=auth).status_code == 404
+    html = client.get('/finance?start=2045-02-01&end=2045-02-01', headers=auth).text
+    assert '2,345,678' in html and '내용 / 메모' in html and 'data-history=' in html
+
+
+def test_concurrent_corrections_reject_lost_update(client):
+    from sqlalchemy.orm.exc import StaleDataError
+    from src.database import SessionLocal
+    from src.models import FinanceTransaction
+    import pytest
+    auth = headers(client)
+    transaction = client.post('/api/finance/transactions', headers=auth, json={
+        'transaction_date':'2046-01-01', 'transaction_type':'income', 'amount':100,
+        'counterparty':'동시수정', 'description':'원본'}).json()
+    with SessionLocal() as first, SessionLocal() as second:
+        a = first.get(FinanceTransaction, transaction['id'])
+        b = second.get(FinanceTransaction, transaction['id'])
+        a.amount = 200
+        first.commit()
+        b.amount = 300
+        with pytest.raises(StaleDataError):
+            second.commit()
+        second.rollback()
+    assert client.get('/api/finance/transactions/' + transaction['id'], headers=auth).json()['amount'] == 200
+
+
+def test_presentation_dashboard_aggregates_without_personal_names(client):
+    from src.database import SessionLocal
+    from src.services.ledger import dashboard_report
+    auth = headers(client)
+    for direction, amount, category in [('income', 100000, 'donation'), ('expense', 30000, 'operating'), ('income', 20000, 'carryover')]:
+        assert client.post('/api/finance/transactions', headers=auth, json={
+            'transaction_date':'2047-03-01', 'transaction_type':direction, 'amount':amount,
+            'category':category, 'counterparty':'발표에서 숨길 개인이름', 'description':'민감한메모'}).status_code == 201
+    from datetime import date
+    with SessionLocal() as db:
+        data = dashboard_report(db, date(2047, 3, 1), date(2047, 3, 31))
+        assert data['monthly'] == [{'month':'2047-03', 'income':100000, 'expense':30000}]
+        assert data['categories'] == [{'label':'운영비', 'amount':30000}]
+        assert data['summary']['carryover'] == 20000
+    response = client.get('/finance/dashboard?start=2047-03-01&end=2047-03-31', headers=auth)
+    assert response.status_code == 200
+    assert '100,000' in response.text and '월별 입출금 비교' in response.text
+    assert '발표에서 숨길 개인이름' not in response.text and '민감한메모' not in response.text
+    assert 'cdn.' not in response.text
+    assert client.get('/finance/dashboard?start=2047-04-01&end=2047-04-30', headers=auth).status_code == 200
+    assert client.get('/finance/dashboard', headers=headers(client, 'applicant')).status_code == 403
+    assert client.get('/finance/dashboard', follow_redirects=False).status_code == 303

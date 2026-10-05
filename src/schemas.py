@@ -143,6 +143,7 @@ class FinanceTransactionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    version: int
     transaction_date: datetime
     transaction_type: str
     amount: int
@@ -227,3 +228,8 @@ class FinanceTransactionCreate(BaseModel):
         if self.category in {"scholarship", "operating"} and self.transaction_type != "expense":
             raise ValueError("장학금과 운영비는 출금으로 등록하세요.")
         return self
+
+
+class FinanceTransactionUpdate(FinanceTransactionCreate):
+    expected_version: int = Field(ge=1, strict=True)
+    change_reason: str = Field(min_length=1, max_length=1000)

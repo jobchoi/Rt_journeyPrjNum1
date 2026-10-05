@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Table, Column, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Table, Column, UniqueConstraint, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -430,6 +430,8 @@ class FinanceTransaction(Base):
     external_reference: Mapped[str] = mapped_column(String, nullable=False)
     counterparty: Mapped[str | None] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(50), nullable=False, default="general", server_default="general")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    __mapper_args__ = {"version_id_col": version}
     source_filename: Mapped[str | None] = mapped_column(String)
     created_by: Mapped[str] = mapped_column(
         String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -440,6 +442,21 @@ class FinanceTransaction(Base):
     created_by_user: Mapped[User] = relationship(
         back_populates="finance_transactions", foreign_keys=[created_by]
     )
+
+
+class FinanceTransactionHistory(Base):
+    __tablename__ = "finance_transaction_history"
+    __table_args__ = (UniqueConstraint("transaction_id", "version"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    transaction_id: Mapped[str] = mapped_column(ForeignKey("finance_transactions.id", ondelete="RESTRICT"), index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    changed_by: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    changed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    reason: Mapped[str] = mapped_column(String(1000))
+    before: Mapped[dict] = mapped_column(JSON)
+    after: Mapped[dict] = mapped_column(JSON)
+    changed_by_user: Mapped[User] = relationship()
 
 
 class Selection(Base):

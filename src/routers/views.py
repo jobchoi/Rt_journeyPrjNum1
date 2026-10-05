@@ -253,6 +253,17 @@ def admin_application_detail(
 FinanceManager = Annotated[User, Depends(require_roles("administrator", "program_manager", "finance"))]
 
 
+@router.get("/finance/dashboard", name="finance_presentation")
+def finance_presentation(request: Request, user: FinanceManager,
+                         db: Annotated[Session, Depends(get_db)],
+                         start: date | None = None, end: date | None = None):
+    from ..services.ledger import dashboard_report
+    return templates.TemplateResponse(request=request, name="finance_dashboard.html", context={
+        **base_context(user), "finance_access": True,
+        "dashboard": dashboard_report(db, start, end),
+    })
+
+
 @router.get("/")
 def home(user: AuthenticatedUser):
     roles = {role.code for role in user.roles}
