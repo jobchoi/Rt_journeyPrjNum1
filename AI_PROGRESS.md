@@ -76,3 +76,4 @@
 - 검증: compileall 및 bash -n, git diff --check 통과. 실제 관리자 로그인 후 /finance, /finance/dashboard, /api/finance/transactions HTTP 200, version 필드와 기존 건수 확인. 브라우저 직접 조작 검증은 수행하지 않음.
 - 추가 수정: 실행 세션 종료 후 서버 프로세스가 사라지는 현상 확인. manage.sh에서 Linux/WSL setsid로 터미널 프로세스 그룹 분리 후 별도 호출에서도 서버 실행 상태 및 HTTP 응답 유지 확인.
 - 한계: 이력 도입 전 수정은 소급 기록되지 않음. 직접 SQL 변경은 앱 이력 우회. 취소/삭제, 지급 연계 정정, 외부 GAS 동기화는 미구현.
+- Git 완료: 기능 커밋 `2e1fda1` 및 서버 관리 수정 `262c3b6` 포함 develop 원격 반영 완료. HTTPS는 인증 helper 부재로 실패했으나 기존 SSH 키를 사용한 같은 저장소 push 성공. 원격 URL이나 인증 설정은 변경하지 않음.
