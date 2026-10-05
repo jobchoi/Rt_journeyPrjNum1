@@ -54,3 +54,12 @@
 - 같은 이름의 거래처를 합산한다. 기존 거래처 미기재 데이터는 그대로 유지한다.
 - 수정/삭제/정정 흐름은 후속 확장이다.
 - 기존 브라우저 인증 방식과 Tailwind CDN은 유지했다. 운영 보안 강화는 후속 범위다.
+
+## 서버 관리 스크립트 수정 (2026-10-05)
+
+- 증상: `./manage.sh restart`에서 `venv/bin/activate`가 없는데도 실행 성공을 출력함.
+- 재현: 프로젝트에 venv 없이 현재 Conda/PATH 환경의 uvicorn으로 실행.
+- 원인: 가상환경 경로 고정, 활성화 실패 무시, 실제 프로세스 시작/종료 확인 누락.
+- 수정: `.venv` → `venv` → PATH Python 자동 선택, VENV_DIR 명시 지원, `python -m uvicorn` 실행. 프로젝트 루트 고정, 시작 완료/실패 확인, PID 유효성 및 프로세스 확인, 종료 대기 추가. README 실행 안내 및 런타임 파일 gitignore 반영.
+- 검증: bash 문법 및 git diff --check 통과. 없는 VENV_DIR에서 실패 반환 확인. 8000 포트 충돌 시 로그 출력/실패 반환 확인. 호스트에서 기존 서버 PID 복원 후 restart/status 성공, `/health` → `{"status":"ok"}`. 전체 pytest 8 passed (기존 deprecation 경고 5개).
+- 환경: 격리 환경에서는 호스트 PID/소켓에 접근할 수 없어 실제 서버 검증과 pytest는 호스트 실행으로 완료.

@@ -10,3 +10,5 @@ storage/
 venv/
 .idea/
 .vscode/
+server.log
+server.pid

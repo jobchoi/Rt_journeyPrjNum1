@@ -26,6 +26,12 @@ python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8001
 
 브라우저에서 `/login`에 접속합니다. 관리자 생성 명령은 비밀번호를 터미널에서 입력받습니다.
 기존 서버가 실행 중이면 새 코드를 적용하려면 재시작해야 합니다.
+백그라운드 실행은 `./manage.sh start`, 재시작은 `./manage.sh restart`를 사용합니다.
+스크립트는 `.venv`, `venv`, 현재 PATH의 Python 순서로 실행 환경을 선택합니다.
+특정 환경은 `VENV_DIR=/path/to/venv ./manage.sh restart`로 지정합니다.
+기본 주소는 `0.0.0.0:8000`이며 `HOST`, `PORT` 환경변수로 변경할 수 있습니다.
+`./manage.sh status`로 프로세스 상태, `./manage.sh log`로 로그를 확인합니다.
+의존성은 선택한 환경에 미리 설치해야 하며, 시작 실패 시 로그를 출력하고 실패 코드로 종료합니다.
 `upgrade_finance.py`는 기존 SQLite DB를 `storage/backups/`에 백업한 뒤 migration을 적용합니다.
 새 DB와 Alembic 버전이 없는 초기 MVP DB도 처리하며, 알 수 없는 스키마는 중단합니다.
 다른 DB 파일에는 `--database /path/to/db`를 사용합니다. 운영 DBMS 변경은 별도 작업입니다.
