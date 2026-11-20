@@ -21,7 +21,7 @@ from ..models import FinanceTransaction, FinanceTransactionHistory, Payment, Use
 from ..schemas import FinanceOverviewResponse, FinanceTransactionResponse, FinanceTransactionCreate, FinanceTransactionUpdate
 
 
-from ..services.bank_import import read_csv, read_xlsx, preview
+from ..services.bank_import import read_csv, read_xlsx, preview, kakao_preset
 from ..services.ledger import CATEGORY_LABELS, filters, list_transactions, period_report
 
 
@@ -153,7 +153,7 @@ async def bank_file(file: UploadFile, sheet: str | None = None, header_row: int 
 @router.post('/bank-import/columns')
 async def bank_columns(_: FinanceManager, file: UploadFile = File(...), sheet: str | None = Form(None), header_row: int | None = Form(None)):
     rows = await bank_file(file, sheet, header_row)
-    return {'columns': rows[0], 'sheets': getattr(rows, 'sheets', []), 'sheet': getattr(rows, 'sheet', None), 'header_row': getattr(rows, 'header_row', 1)}
+    return {'columns': rows[0], 'sheets': getattr(rows, 'sheets', []), 'sheet': getattr(rows, 'sheet', None), 'header_row': getattr(rows, 'header_row', 1), 'preset': kakao_preset(rows[0])}
 
 
 @router.post('/bank-import/preview')

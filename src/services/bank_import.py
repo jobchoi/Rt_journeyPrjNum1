@@ -15,7 +15,7 @@ from sqlalchemy import select
 from ..models import FinanceTransaction
 from ..schemas import FinanceTransactionCreate
 
-FIELDS = {'date', 'deposit', 'withdrawal', 'balance', 'description', 'memo', 'counterparty', 'reference'}
+FIELDS = {'date', 'deposit', 'withdrawal', 'balance', 'description', 'memo', 'counterparty', 'reference', 'direction', 'amount'}
 
 
 def read_csv(content):
@@ -82,10 +82,18 @@ def read_xlsx(content, sheet=None, header_row=None):
     except Exception:
         raise HTTPException(400, '손상되었거나 지원하지 않는 XLSX 파일입니다.') from None
 
+def kakao_preset(columns):
+    names = {'date': '거래일시', 'direction': '구분', 'amount': '거래금액',
+             'balance': '거래 후 잔액', 'description': '내용', 'memo': '메모'}
+    if not all(columns.count(name) == 1 for name in names.values()):
+        return {}
+    return {field: columns.index(name) for field, name in names.items()}
+
+
 def preview(rows, mapping, db):
     if set(mapping) - FIELDS or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 or v >= len(rows[0]) for v in mapping.values()):
         raise HTTPException(400, '열 매핑이 올바르지 않습니다.')
-    if len(set(mapping.values())) != len(mapping) or not {'date', 'description'} <= mapping.keys() or not ({'deposit', 'withdrawal'} & mapping.keys()):
+    if len(set(mapping.values())) != len(mapping) or not {'date', 'description'} <= mapping.keys() or not (({'deposit', 'withdrawal'} & mapping.keys() and not ({'direction', 'amount'} & mapping.keys())) or ({'direction', 'amount'} <= mapping.keys() and not ({'deposit', 'withdrawal'} & mapping.keys()))):
         raise HTTPException(400, '날짜, 내용 및 입금 또는 출금 열을 서로 다르게 지정하세요.')
     result, seen_refs, seen_keys = [], set(), set()
     for index, row in enumerate(rows[1:], 1):
@@ -93,7 +101,14 @@ def preview(rows, mapping, db):
         def value(key):
             return row[mapping[key]].strip() if key in mapping else ''
         try:
-            stamp = datetime.fromisoformat(value('date'))
+            date_text = value('date')
+            if 'direction' in mapping:
+                try:
+                    stamp = datetime.strptime(date_text, '%Y.%m.%d %H:%M:%S')
+                except ValueError:
+                    stamp = datetime.fromisoformat(date_text)
+            else:
+                stamp = datetime.fromisoformat(date_text)
             if stamp.tzinfo is not None:
                 raise ValueError()
             def money(text):
@@ -103,7 +118,14 @@ def preview(rows, mapping, db):
                 if not text.isdecimal():
                     raise ValueError()
                 return int(text)
-            deposit, withdrawal = money(value('deposit')), money(value('withdrawal'))
+            if 'direction' in mapping:
+                direction, raw_amount = value('direction'), value('amount')
+                if direction not in ('입금', '출금') or (raw_amount.startswith('-') and direction != '출금'):
+                    raise ValueError()
+                amount = money(raw_amount.removeprefix('-'))
+                deposit, withdrawal = (amount, 0) if direction == '입금' else (0, amount)
+            else:
+                deposit, withdrawal = money(value('deposit')), money(value('withdrawal'))
             if (deposit > 0) == (withdrawal > 0):
                 raise ValueError()
             balance = value('balance')

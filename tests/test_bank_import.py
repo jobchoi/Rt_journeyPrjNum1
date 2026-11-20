@@ -68,3 +68,32 @@ def test_xlsx_formula_rejected(client):
     book.save(stream)
     response = client.post('/api/finance/bank-import/columns', headers=headers(client), files={'file': ('synthetic.xlsx', stream.getvalue())})
     assert response.status_code == 400
+
+
+def test_kakao_preset_synthetic_xlsx(client):
+    book = Workbook()
+    ws = book.active
+    ws.title = '카카오뱅크 거래내역'
+    ws.append(['합성 안내'])
+    for _ in range(9):
+        ws.append([])
+    ws.append([None, '거래일시', '구분', '거래금액', '거래 후 잔액', '거래구분', '내용', '메모'])
+    ws.append([None, '2051.02.03 10:30:00', '입금', '1,200', '1,200', '이체', '가상 입금', '가상 메모'])
+    ws.append([None, '2051.02.04 10:30:00', '출금', '-200', '1,000', '이체', '가상 출금', None])
+    ws.append([None, '2051.02.04 10:30:00', '출금', '-200', '1,000', '이체', '가상 출금', None])
+    ws.append([None, '2051-02-05 10:30:00', '입금', '-100', '900', '이체', '오류', None])
+    stream = io.BytesIO()
+    book.save(stream)
+    files = {'file': ('synthetic.xlsx', stream.getvalue())}
+    route, auth = '/api/finance/bank-import/', headers(client)
+    columns = client.post(route + 'columns', headers=auth, files=files).json()
+    assert columns['header_row'] == 11
+    mapping = columns['preset']
+    assert mapping == {'date': 1, 'direction': 2, 'amount': 3, 'balance': 4, 'description': 6, 'memo': 7}
+    data = {'mapping': json.dumps(mapping)}
+    rows = client.post(route + 'preview', headers=auth, files=files, data=data).json()['rows']
+    assert [(r['status'], r.get('type'), r.get('amount')) for r in rows] == [
+        ('new', 'income', 1200), ('new', 'expense', 200),
+        ('duplicate', 'expense', 200), ('error', None, None)]
+    assert client.post(route + 'confirm', headers=auth, files=files, data={**data, 'selected': '[12,13]'}).json() == {'imported': 2}
+    assert [r['status'] for r in client.post(route + 'preview', headers=auth, files=files, data=data).json()['rows']] == ['duplicate', 'duplicate', 'duplicate', 'error']
