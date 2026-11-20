@@ -175,7 +175,7 @@ async def bank_confirm(current_user: FinanceManager, db: Annotated[Session, Depe
         raise HTTPException(400, '선택 또는 열 매핑이 올바르지 않습니다.') from None
     results = preview(await bank_file(file, sheet, header_row), columns, db)
     chosen = [r for r in results if r['row'] in selected_rows]
-    if not chosen or len(chosen) != len(selected_rows) or any(r['status'] == 'error' for r in chosen):
+    if not chosen or len(chosen) != len(selected_rows) or any(r['status'] not in ('new', 'duplicate') for r in chosen):
         raise HTTPException(400, '유효한 거래를 선택하세요.')
     refs = [r['reference'] for r in chosen if r['reference']]
     if len(set(refs)) != len(refs) or (refs and db.scalar(select(FinanceTransaction.id).where(FinanceTransaction.external_reference.in_(refs)).limit(1))):

@@ -97,3 +97,24 @@ def test_kakao_preset_synthetic_xlsx(client):
         ('duplicate', 'expense', 200), ('error', None, None)]
     assert client.post(route + 'confirm', headers=auth, files=files, data={**data, 'selected': '[12,13]'}).json() == {'imported': 2}
     assert [r['status'] for r in client.post(route + 'preview', headers=auth, files=files, data=data).json()['rows']] == ['duplicate', 'duplicate', 'duplicate', 'error']
+
+
+def test_zero_amount_rows_are_skipped_and_cannot_be_confirmed(client):
+    auth = headers(client)
+    route = '/api/finance/bank-import/'
+    cases = [
+        ('날짜,입금,출금,내용\n2052-01-01,0,,합성\n2052-01-02,,0,합성\n2052-01-03,,,합성\n',
+         {'date': 0, 'deposit': 1, 'withdrawal': 2, 'description': 3}, [2, 3]),
+        ('거래일시,구분,거래금액,거래 후 잔액,내용,메모\n2052.01.01 00:00:00,입금,0,0,합성,\n2052.01.02 00:00:00,출금,-0,0,합성,\n',
+         {'date': 0, 'direction': 1, 'amount': 2, 'balance': 3, 'description': 4, 'memo': 5}, [2, 3]),
+    ]
+    for content, mapping, skipped in cases:
+        files = {'file': ('synthetic.csv', content.encode(), 'text/csv')}
+        data = {'mapping': json.dumps(mapping)}
+        rows = client.post(route + 'preview', headers=auth, files=files, data=data).json()['rows']
+        assert [r['row'] for r in rows if r['status'] == 'skipped'] == skipped
+        assert all(r['reason'] == '건너뜀(금액 0)' for r in rows if r['status'] == 'skipped')
+        if len(rows) > len(skipped):
+            assert rows[-1]['status'] == 'error'
+        response = client.post(route + 'confirm', headers=auth, files=files, data={**data, 'selected': json.dumps(skipped)})
+        assert response.status_code == 400

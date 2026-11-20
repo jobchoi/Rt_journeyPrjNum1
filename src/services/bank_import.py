@@ -126,6 +126,9 @@ def preview(rows, mapping, db):
                 deposit, withdrawal = (amount, 0) if direction == '입금' else (0, amount)
             else:
                 deposit, withdrawal = money(value('deposit')), money(value('withdrawal'))
+            if deposit == 0 and withdrawal == 0 and (value('amount') if 'direction' in mapping else value('deposit') or value('withdrawal')):
+                result.append({'row': number, 'status': 'skipped', 'reason': '건너뜀(금액 0)'})
+                continue
             if (deposit > 0) == (withdrawal > 0):
                 raise ValueError()
             balance = value('balance')
