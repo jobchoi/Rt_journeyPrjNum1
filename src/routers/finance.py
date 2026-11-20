@@ -21,7 +21,7 @@ from ..models import FinanceTransaction, FinanceTransactionHistory, Payment, Use
 from ..schemas import FinanceOverviewResponse, FinanceTransactionResponse, FinanceTransactionCreate, FinanceTransactionUpdate
 
 
-from ..services.bank_import import read_csv, preview
+from ..services.bank_import import read_csv, read_xlsx, preview
 from ..services.ledger import CATEGORY_LABELS, filters, list_transactions, period_report
 
 
@@ -139,39 +139,41 @@ async def import_transactions(
     return transactions
 
 
-async def bank_file(file: UploadFile):
-    if not file.filename or not file.filename.lower().endswith('.csv'):
-        raise HTTPException(415, 'UTF-8 CSV 파일만 지원합니다. XLSX는 아직 지원하지 않습니다.')
+async def bank_file(file: UploadFile, sheet: str | None = None, header_row: int | None = None):
+    if not file.filename or not file.filename.lower().endswith(('.csv', '.xlsx')):
+        raise HTTPException(415, 'UTF-8 CSV 또는 XLSX 파일만 지원합니다.')
     content = await file.read(5 * 1024 * 1024 + 1)
     if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(413, 'CSV는 5MB 이하만 지원합니다.')
-    return read_csv(content)
+        raise HTTPException(413, '파일은 5MB 이하만 지원합니다.')
+    if header_row is not None and header_row < 1:
+        raise HTTPException(400, '머리글 행은 1 이상이어야 합니다.')
+    return read_xlsx(content, sheet, header_row) if file.filename.lower().endswith('.xlsx') else read_csv(content)
 
 
 @router.post('/bank-import/columns')
-async def bank_columns(_: FinanceManager, file: UploadFile = File(...)):
-    rows = await bank_file(file)
-    return {'columns': rows[0]}
+async def bank_columns(_: FinanceManager, file: UploadFile = File(...), sheet: str | None = Form(None), header_row: int | None = Form(None)):
+    rows = await bank_file(file, sheet, header_row)
+    return {'columns': rows[0], 'sheets': getattr(rows, 'sheets', []), 'sheet': getattr(rows, 'sheet', None), 'header_row': getattr(rows, 'header_row', 1)}
 
 
 @router.post('/bank-import/preview')
-async def bank_preview(_: FinanceManager, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...), mapping: str = Form(...)):
+async def bank_preview(_: FinanceManager, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...), mapping: str = Form(...), sheet: str | None = Form(None), header_row: int | None = Form(None)):
     try:
         columns = json.loads(mapping)
         if not isinstance(columns, dict): raise ValueError()
     except (ValueError, TypeError):
         raise HTTPException(400, '열 매핑이 올바르지 않습니다.') from None
-    return {'rows': preview(await bank_file(file), columns, db)}
+    return {'rows': preview(await bank_file(file, sheet, header_row), columns, db)}
 
 
 @router.post('/bank-import/confirm', status_code=201)
-async def bank_confirm(current_user: FinanceManager, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...), mapping: str = Form(...), selected: str = Form(...)):
+async def bank_confirm(current_user: FinanceManager, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...), mapping: str = Form(...), selected: str = Form(...), sheet: str | None = Form(None), header_row: int | None = Form(None)):
     try:
         columns, selected_rows = json.loads(mapping), json.loads(selected)
         if not isinstance(columns, dict) or not isinstance(selected_rows, list) or any(type(i) is not int for i in selected_rows) or len(set(selected_rows)) != len(selected_rows): raise ValueError()
     except (ValueError, TypeError):
         raise HTTPException(400, '선택 또는 열 매핑이 올바르지 않습니다.') from None
-    results = preview(await bank_file(file), columns, db)
+    results = preview(await bank_file(file, sheet, header_row), columns, db)
     chosen = [r for r in results if r['row'] in selected_rows]
     if not chosen or len(chosen) != len(selected_rows) or any(r['status'] == 'error' for r in chosen):
         raise HTTPException(400, '유효한 거래를 선택하세요.')

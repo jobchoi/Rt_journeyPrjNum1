@@ -3,7 +3,9 @@ import csv
 import hashlib
 import io
 import json
-from datetime import datetime
+from datetime import date, datetime
+
+from openpyxl import load_workbook
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -28,13 +30,66 @@ def read_csv(content):
     return rows
 
 
+
+class BankRows(list):
+    """Rows plus original worksheet row numbers for preview and confirmation."""
+    def __init__(self, rows, numbers, sheets, sheet, header_row):
+        super().__init__(rows)
+        self.numbers, self.sheets, self.sheet, self.header_row = numbers, sheets, sheet, header_row
+
+
+def read_xlsx(content, sheet=None, header_row=None):
+    try:
+        book = load_workbook(io.BytesIO(content), read_only=True, data_only=False, keep_links=False)
+        try:
+            if sheet and sheet not in book.sheetnames:
+                raise HTTPException(400, '선택한 시트를 찾을 수 없습니다.')
+            ws = book[sheet] if sheet else book.worksheets[0]
+            if ws.max_row > 5001 or ws.max_column > 100:
+                raise HTTPException(400, 'XLSX는 최대 5,001개 행, 100개 열을 지원합니다.')
+            rows = []
+            for number, cells in enumerate(ws.iter_rows(), 1):
+                values = []
+                for cell in cells:
+                    if cell.data_type == 'f':
+                        raise HTTPException(400, '수식이 포함된 XLSX는 지원하지 않습니다.')
+                    value = cell.value
+                    if isinstance(value, (datetime, date)):
+                        value = value.isoformat()
+                    elif value is None:
+                        value = ''
+                    else:
+                        value = str(value)
+                    values.append(value)
+                if any(value.strip() for value in values):
+                    rows.append((number, values))
+            if not rows:
+                raise HTTPException(400, '시트가 비어 있습니다.')
+            if header_row is None:
+                keywords = ('날짜', '일시', '거래일', '입금', '출금', '내용', '적요', 'date', 'deposit', 'withdrawal', 'description')
+                def score(item):
+                    return sum(any(word in value.strip().lower() for word in keywords) for value in item[1])
+                header_row = max(rows[:100], key=score)[0] if any(score(row) for row in rows[:100]) else rows[0][0]
+            header = next((values for number, values in rows if number == header_row), None)
+            if header is None:
+                raise HTTPException(400, '머리글 행을 찾을 수 없습니다.')
+            selected = [(number, values) for number, values in rows if number >= header_row]
+            return BankRows([values for _, values in selected], [number for number, _ in selected], book.sheetnames, ws.title, header_row)
+        finally:
+            book.close()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, '손상되었거나 지원하지 않는 XLSX 파일입니다.') from None
+
 def preview(rows, mapping, db):
     if set(mapping) - FIELDS or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 or v >= len(rows[0]) for v in mapping.values()):
         raise HTTPException(400, '열 매핑이 올바르지 않습니다.')
     if len(set(mapping.values())) != len(mapping) or not {'date', 'description'} <= mapping.keys() or not ({'deposit', 'withdrawal'} & mapping.keys()):
         raise HTTPException(400, '날짜, 내용 및 입금 또는 출금 열을 서로 다르게 지정하세요.')
     result, seen_refs, seen_keys = [], set(), set()
-    for number, row in enumerate(rows[1:], 2):
+    for index, row in enumerate(rows[1:], 1):
+        number = rows.numbers[index] if isinstance(rows, BankRows) else index + 1
         def value(key):
             return row[mapping[key]].strip() if key in mapping else ''
         try:
