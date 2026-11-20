@@ -2,11 +2,12 @@
 
 import csv
 import io
+import json
 from datetime import date, datetime, time
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query, status
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -20,6 +21,7 @@ from ..models import FinanceTransaction, FinanceTransactionHistory, Payment, Use
 from ..schemas import FinanceOverviewResponse, FinanceTransactionResponse, FinanceTransactionCreate, FinanceTransactionUpdate
 
 
+from ..services.bank_import import read_csv, preview
 from ..services.ledger import CATEGORY_LABELS, filters, list_transactions, period_report
 
 
@@ -135,6 +137,59 @@ async def import_transactions(
         db.rollback()
         raise HTTPException(status_code=409, detail="중복 거래번호로 저장할 수 없습니다.") from None
     return transactions
+
+
+async def bank_file(file: UploadFile):
+    if not file.filename or not file.filename.lower().endswith('.csv'):
+        raise HTTPException(415, 'UTF-8 CSV 파일만 지원합니다. XLSX는 아직 지원하지 않습니다.')
+    content = await file.read(5 * 1024 * 1024 + 1)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(413, 'CSV는 5MB 이하만 지원합니다.')
+    return read_csv(content)
+
+
+@router.post('/bank-import/columns')
+async def bank_columns(_: FinanceManager, file: UploadFile = File(...)):
+    rows = await bank_file(file)
+    return {'columns': rows[0]}
+
+
+@router.post('/bank-import/preview')
+async def bank_preview(_: FinanceManager, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...), mapping: str = Form(...)):
+    try:
+        columns = json.loads(mapping)
+        if not isinstance(columns, dict): raise ValueError()
+    except (ValueError, TypeError):
+        raise HTTPException(400, '열 매핑이 올바르지 않습니다.') from None
+    return {'rows': preview(await bank_file(file), columns, db)}
+
+
+@router.post('/bank-import/confirm', status_code=201)
+async def bank_confirm(current_user: FinanceManager, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...), mapping: str = Form(...), selected: str = Form(...)):
+    try:
+        columns, selected_rows = json.loads(mapping), json.loads(selected)
+        if not isinstance(columns, dict) or not isinstance(selected_rows, list) or any(type(i) is not int for i in selected_rows) or len(set(selected_rows)) != len(selected_rows): raise ValueError()
+    except (ValueError, TypeError):
+        raise HTTPException(400, '선택 또는 열 매핑이 올바르지 않습니다.') from None
+    results = preview(await bank_file(file), columns, db)
+    chosen = [r for r in results if r['row'] in selected_rows]
+    if not chosen or len(chosen) != len(selected_rows) or any(r['status'] == 'error' for r in chosen):
+        raise HTTPException(400, '유효한 거래를 선택하세요.')
+    refs = [r['reference'] for r in chosen if r['reference']]
+    if len(set(refs)) != len(refs) or (refs and db.scalar(select(FinanceTransaction.id).where(FinanceTransaction.external_reference.in_(refs)).limit(1))):
+        raise HTTPException(409, '이미 등록된 거래번호입니다. 다시 미리보기 하세요.')
+    for r in chosen:
+        db.add(FinanceTransaction(id=uuid4().hex, transaction_date=datetime.fromisoformat(r['date']),
+            transaction_type=r['type'], amount=r['amount'], description=r['description'],
+            counterparty=r['counterparty'] or None, category='general', source_filename='bank-import.csv',
+            external_reference=r['reference'] or 'bank-' + r['key'] + '-' + uuid4().hex,
+            created_by=current_user.id))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, '거래번호가 중복되었습니다. 다시 미리보기 하세요.') from None
+    return {'imported': len(chosen)}
 
 
 @router.get("/overview", response_model=FinanceOverviewResponse)
