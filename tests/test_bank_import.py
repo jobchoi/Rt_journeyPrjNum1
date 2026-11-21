@@ -118,3 +118,19 @@ def test_zero_amount_rows_are_skipped_and_cannot_be_confirmed(client):
             assert rows[-1]['status'] == 'error'
         response = client.post(route + 'confirm', headers=auth, files=files, data={**data, 'selected': json.dumps(skipped)})
         assert response.status_code == 400
+
+
+def test_password_encrypted_xlsx_guidance(client):
+    auth = headers(client)
+    encrypted = b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1' + bytes(504)
+    files = {'file': ('synthetic.xlsx', encrypted)}
+    data = {'mapping': json.dumps({'date': 0, 'deposit': 1, 'description': 2}), 'selected': '[2]'}
+    for action in ('columns', 'preview', 'confirm'):
+        response = client.post('/api/finance/bank-import/' + action,
+                               headers=auth, files=files, data=data)
+        assert response.status_code == 400
+        assert response.json()['detail'] == '암호가 걸린 파일입니다. 은행 앱에서 암호 없이 내보내거나 엑셀에서 암호를 해제한 뒤 올려 주세요.'
+    damaged = client.post('/api/finance/bank-import/columns', headers=auth,
+                          files={'file': ('damaged.xlsx', b'not an xlsx')})
+    assert damaged.status_code == 400
+    assert damaged.json()['detail'] == '손상되었거나 지원하지 않는 XLSX 파일입니다.'

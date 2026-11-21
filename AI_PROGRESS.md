@@ -10,6 +10,12 @@
 - migration: 0002_simple_finance, 백업/업그레이드: scripts/upgrade_finance.py
 - 이전 진행 기록과 설계: docs/archive/scholarship-mvp/
 
+## 2026-11-21 가져오기 화면 다듬기와 확장 결정안
+
+- 브랜치: feature/bank-excel-import. 구현 Codex, 검증 Claude
+- 버튼 스타일, 미리보기 머리글, 날짜·잔액 표시, 암호 XLSX 안내. pytest 17개 통과(Claude 실행), 데모 DB(합성 데이터) 브라우저 확인: 머리글 9개, `2026-11-01 09:12`, `1,300,000`, 암호 파일 안내 문구, 콘솔 오류 0
+- docs/handoff/NEXT_DECISIONS.md: 취소·정정, 증빙·계좌별 원장·동명이인, 결산 잠금·승인, 운영 인증·배포·복구 — 사용자 답변 대기
+
 ## 완료된 작업
 
 - 독립 수동 원장, 이름/입금처, 거래 내용, 거래 분류

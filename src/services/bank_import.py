@@ -39,6 +39,9 @@ class BankRows(list):
 
 
 def read_xlsx(content, sheet=None, header_row=None):
+    # Password-encrypted OOXML uses an OLE compound container instead of ZIP.
+    if content.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+        raise HTTPException(400, '암호가 걸린 파일입니다. 은행 앱에서 암호 없이 내보내거나 엑셀에서 암호를 해제한 뒤 올려 주세요.')
     try:
         book = load_workbook(io.BytesIO(content), read_only=True, data_only=False, keep_links=False)
         try:
